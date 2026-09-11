@@ -9,6 +9,7 @@ import 'core/wave_scope.dart';
 import 'core/wave_theme.dart';
 import 'data/music_api.dart';
 import 'ui/root_shell.dart';
+import 'ui/web_frame.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -79,10 +80,12 @@ class _WaveAppState extends State<WaveApp> {
   Widget build(BuildContext context) {
     return WaveScope(
       services: _services,
-      child: const CupertinoApp(
+      child: CupertinoApp(
         title: 'Wave',
         debugShowCheckedModeBanner: false,
-        theme: CupertinoThemeData(
+        // A desktop browser window is not a phone; keep the layout honest.
+        builder: (context, child) => WebFrame(child: child!),
+        theme: const CupertinoThemeData(
           brightness: Brightness.dark,
           primaryColor: WaveColors.violet,
           scaffoldBackgroundColor: WaveColors.abyss,
@@ -93,7 +96,7 @@ class _WaveAppState extends State<WaveApp> {
             navLargeTitleTextStyle: WaveText.largeTitle,
           ),
         ),
-        home: RootShell(),
+        home: const RootShell(),
       ),
     );
   }
