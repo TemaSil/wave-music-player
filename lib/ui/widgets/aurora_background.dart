@@ -11,12 +11,21 @@ import '../../core/wave_theme.dart';
 /// speeds up the drift, which is what makes the app feel "alive" while a track
 /// is running and settle down when it is paused.
 class AuroraBackground extends StatefulWidget {
-  const AuroraBackground({super.key, required this.palette, this.energy = 0});
+  const AuroraBackground({
+    super.key,
+    required this.palette,
+    this.energy = 0,
+    this.animate = true,
+  });
 
   final WavePalette palette;
 
   /// 0 = idle, 1 = playing.
   final double energy;
+
+  /// When false the field holds still. It is the one thing on screen that
+  /// never stops moving, and settings let that be switched off.
+  final bool animate;
 
   @override
   State<AuroraBackground> createState() => _AuroraBackgroundState();
@@ -27,7 +36,21 @@ class _AuroraBackgroundState extends State<AuroraBackground>
   late final AnimationController _drift = AnimationController(
     vsync: this,
     duration: const Duration(seconds: 28),
-  )..repeat();
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.animate) _drift.repeat();
+  }
+
+  @override
+  void didUpdateWidget(AuroraBackground oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.animate == oldWidget.animate) return;
+    // Stopping leaves the field wherever it is rather than snapping home.
+    widget.animate ? _drift.repeat() : _drift.stop();
+  }
 
   @override
   void dispose() {

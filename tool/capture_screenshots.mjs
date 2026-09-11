@@ -103,18 +103,20 @@ async function main() {
 
   await shoot(page, '01-discover');
 
+  // Appearance settings, where the live-colour skin lives. Captured first,
+  // because the header fades out after 30px of scroll. Clicked by position:
+  // the scaffold merges the header's semantics into its parent, so the button
+  // has no addressable node of its own.
+  await page.mouse.click(VIEWPORT.width - 34, 22);
+  await settle(page, 2200);
+  await shoot(page, '06-settings');
+  await page.keyboard.press('Escape');
+  await settle(page, 1400);
+
   // Start playback from the hero carousel and expand into the full player.
   await node(page, 'Play Aurora Drift').click();
   await settle(page, 2500);
   await page.locator('[aria-label^="Now playing:"]').last().click();
-
-  // Wait for the stream to actually start: a stopped player would show a flat
-  // visualiser and a play glyph in every shot below.
-  await page
-    .locator('[aria-label^="Now playing:"], flt-semantics')
-    .first()
-    .waitFor({ timeout: 10_000 })
-    .catch(() => {});
   await settle(page, 6000);
   await shoot(page, '03-now-playing');
 
@@ -127,27 +129,26 @@ async function main() {
   await page.goBack();
   await settle(page, 1600);
 
-  // Back on the shell, with the mini player settled and playing.
+  // Back on the shell, with the play pill settled and playing.
   await shoot(page, '02-mini-player');
 
-  // Like a few rows from the charts so the library has something in it. Each
-  // tap flips that row's label to "Remove from library", so the first unliked
-  // row is always the next one to click.
+  // Scrolling collapses the tab bar and pulls the pill inline — the iOS 26
+  // behaviour this redesign is built around.
+  await page.mouse.move(VIEWPORT.width / 2, 500);
+  await page.mouse.wheel(0, 420);
+  await settle(page, 1800);
+  await shoot(page, '05-collapsed-bar');
+  await page.mouse.wheel(0, -420);
+  await settle(page, 1200);
+
+  // Like a few rows so the library has something in it.
   for (let i = 0; i < 3; i++) {
     await page.locator('[aria-label="Add to library"]').first().click();
     await page.waitForTimeout(700);
   }
 
-  // Search: the empty state first, then results.
-  await node(page, 'Search').click();
-  await settle(page, 1600);
-  await shoot(page, '05-search');
-
-  await node(page, 'Coast').click();
-  await settle(page, 2200);
-  await shoot(page, '06-search-results');
-
-  await node(page, 'Library').click();
+  // Library.
+  await node(page, 'Медиатека').click();
   await settle(page, 2000);
   await shoot(page, '07-library');
 

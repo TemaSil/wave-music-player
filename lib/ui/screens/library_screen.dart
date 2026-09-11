@@ -10,9 +10,16 @@ import '../widgets/track_tile.dart';
 
 /// Locally saved favourites.
 class LibraryScreen extends StatelessWidget {
-  const LibraryScreen({super.key, required this.scrollController});
+  const LibraryScreen({
+    super.key,
+    required this.scrollController,
+    required this.contentPadding,
+  });
 
   final ScrollController scrollController;
+
+  /// Space the floating tab bar and play pill need at the bottom of the list.
+  final double contentPadding;
 
   @override
   Widget build(BuildContext context) {
@@ -32,21 +39,18 @@ class LibraryScreen extends StatelessWidget {
         return CustomScrollView(
           controller: scrollController,
           slivers: [
+            // The shell paints the large title; this only clears it.
+            SliverToBoxAdapter(
+              child: SizedBox(height: MediaQuery.paddingOf(context).top + 52),
+            ),
             SliverToBoxAdapter(
               child: Padding(
-                padding: const EdgeInsets.fromLTRB(22, 10, 22, 0),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('Library', style: WaveText.largeTitle),
-                    const SizedBox(height: 4),
-                    Text(
-                      tracks.isEmpty
-                          ? 'Saved on this device'
-                          : '${tracks.length} saved · ${playable.length} playable',
-                      style: WaveText.caption,
-                    ),
-                  ],
+                padding: const EdgeInsets.fromLTRB(22, 0, 22, 0),
+                child: Text(
+                  tracks.isEmpty
+                      ? 'Сохранено на этом устройстве'
+                      : '${tracks.length} сохранено · ${playable.length} с превью',
+                  style: WaveText.caption,
                 ),
               ),
             ),
@@ -54,15 +58,16 @@ class LibraryScreen extends StatelessWidget {
               const SliverToBoxAdapter(
                 child: EmptyState(
                   icon: CupertinoIcons.heart,
-                  title: 'Nothing saved yet',
-                  subtitle: 'Tap the heart on any track to keep it here.',
+                  title: 'Пока пусто',
+                  subtitle:
+                      'Нажмите сердечко на любом треке — он окажется здесь.',
                 ),
               )
             else ...[
               SliverToBoxAdapter(
                 child: SectionHeader(
-                  title: 'Liked songs',
-                  subtitle: 'Newest first',
+                  title: 'Любимые треки',
+                  subtitle: 'Сначала новые',
                   trailing: playable.isEmpty
                       ? null
                       : GlassButton(
@@ -108,7 +113,7 @@ class LibraryScreen extends StatelessWidget {
                 },
               ),
             ],
-            const SliverToBoxAdapter(child: SizedBox(height: 160)),
+            SliverToBoxAdapter(child: SizedBox(height: contentPadding)),
           ],
         );
       },

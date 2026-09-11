@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:audio_session/audio_session.dart';
 import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:just_audio_background/just_audio_background.dart';
 
 import '../data/track.dart';
 
@@ -117,7 +118,7 @@ class PlayerService extends ChangeNotifier {
   Future<void> playQueue(List<Track> tracks, {int startIndex = 0}) async {
     final playable = tracks.where((t) => t.isPlayable).toList();
     if (playable.isEmpty) {
-      _error = 'No preview stream available for these tracks.';
+      _error = 'У этих треков нет превью для воспроизведения.';
       notifyListeners();
       return;
     }
@@ -152,17 +153,33 @@ class PlayerService extends ChangeNotifier {
       );
       await _player.play();
     } catch (e) {
-      _error = 'Could not start playback.';
+      _error = 'Не удалось начать воспроизведение.';
       notifyListeners();
     }
   }
 
   /// Demo tracks point at bundled assets; everything else is a remote preview.
+  ///
+  /// The tag has to be a [MediaItem]: that is what `just_audio_background`
+  /// reads to populate the notification and the lock screen, so a plain id
+  /// would leave the media session blank.
   AudioSource _sourceFor(Track track) {
     final url = track.previewUrl!;
+    final tag = MediaItem(
+      id: track.uid,
+      title: track.title,
+      artist: track.artist,
+      album: track.album.isEmpty ? null : track.album,
+      duration: track.duration > Duration.zero ? track.duration : null,
+      // Demo artwork lives in the asset bundle, which the platform
+      // notification cannot load, so only remote covers are offered.
+      artUri: track.artworkUrl.startsWith('http')
+          ? Uri.tryParse(track.artworkUrl)
+          : null,
+    );
     return url.startsWith('assets/')
-        ? AudioSource.asset(url, tag: track.uid)
-        : AudioSource.uri(Uri.parse(url), tag: track.uid);
+        ? AudioSource.asset(url, tag: tag)
+        : AudioSource.uri(Uri.parse(url), tag: tag);
   }
 
   bool _sameQueue(List<Track> other) {

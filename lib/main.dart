@@ -1,4 +1,5 @@
 import 'package:flutter/cupertino.dart';
+import 'package:just_audio_background/just_audio_background.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
@@ -15,6 +16,16 @@ Future<void> main() async {
   // Warms the liquid-glass shader pipeline so the first frame is not the one
   // that pays for compilation.
   await LiquidGlassWidgets.initialize();
+
+  // Puts the transport controls in the notification shade and on the lock
+  // screen, and keeps playback alive when the app goes to background. Must run
+  // before the first AudioPlayer is constructed.
+  await JustAudioBackground.init(
+    androidNotificationChannelId: 'com.wave.wave.playback',
+    androidNotificationChannelName: 'Воспроизведение',
+    androidNotificationOngoing: true,
+    androidStopForegroundOnPause: true,
+  );
   await PlayerService.configureSession();
 
   SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.light);
@@ -55,6 +66,7 @@ class _WaveAppState extends State<WaveApp> {
   void initState() {
     super.initState();
     _services.favorites.load();
+    _services.appearance.load();
   }
 
   @override

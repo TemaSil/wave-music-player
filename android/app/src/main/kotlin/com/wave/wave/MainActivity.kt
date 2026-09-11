@@ -1,5 +1,8 @@
 package com.wave.wave
 
-import io.flutter.embedding.android.FlutterActivity
+import com.ryanheise.audioservice.AudioServiceActivity
 
-class MainActivity : FlutterActivity()
+/// AudioServiceActivity rather than FlutterActivity: the media session needs
+/// the activity to survive being launched from the notification and the lock
+/// screen, which is what this subclass arranges.
+class MainActivity : AudioServiceActivity()

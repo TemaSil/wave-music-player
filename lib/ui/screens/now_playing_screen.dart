@@ -91,7 +91,9 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
       ]),
       builder: (context, _) {
         final player = services.player;
-        final palette = services.ambience.value;
+        // Always the artwork's own colours here: Apple Music tints Now Playing
+        // from the cover even while the rest of the app stays black.
+        final palette = services.ambience.artwork;
         final track = player.current;
 
         if (track == null) {
@@ -365,7 +367,7 @@ class _Controls extends StatelessWidget {
               ),
               Flexible(
                 child: Text(
-                  '${track.source.label}  ·  preview',
+                  '${track.source.label}  ·  превью',
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: WaveText.tiny,
@@ -418,7 +420,7 @@ class _QueueSheet extends StatelessWidget {
           children: [
             Padding(
               padding: const EdgeInsets.fromLTRB(22, 8, 22, 10),
-              child: Text('Up next · ${queue.length}', style: WaveText.section),
+              child: Text('Далее · ${queue.length}', style: WaveText.section),
             ),
             Expanded(
               child: ListView.builder(
