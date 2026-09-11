@@ -24,7 +24,7 @@
 | | |
 |---|---|
 | 📦 **Скачать APK** | [**Последний релиз →**](https://github.com/TemaSil/wave-music-player/releases/latest) — `wave-arm64-v8a.apk` для большинства современных телефонов, `wave-universal.apk` — если не уверены |
-| 🧪 **Сборка с любого коммита** | [Actions → CI → артефакт `wave-apk`](https://github.com/TemaSil/wave-music-player/actions/workflows/ci.yml) (нужен вход в GitHub) |
+| 🧪 **Сборка с любого коммита** | [Actions → CI → артефакт `wave-apk`](https://github.com/TemaSil/wave-music-player/actions/workflows/ci.yml) (нужен вход в GitHub, хранится 30 дней) |
 | 🌐 **Попробовать в браузере** | [temasil.github.io/wave-music-player](https://temasil.github.io/wave-music-player/) — публикуется из ветки `main` <sup>*</sup> |
 | 📱 **Собрать самому** | [Инструкции ниже](#сборка) |
 
@@ -195,11 +195,14 @@ dart format --output=none --set-exit-if-changed lib test tool
 3. **web** — собирает веб-версию с демо-каталогом.
 4. **pages** — публикует её на GitHub Pages (только с `main`).
 
-Выпустить релиз с APK:
+Выпустить релиз с APK — любым из двух способов:
 
 ```bash
 git tag v1.0.0 && git push origin v1.0.0
 ```
+
+или без прав на пуш тегов: **Actions → CI → Run workflow**, в поле `release_tag`
+указать `v1.0.0`. Тег и релиз создадутся сами, APK прикрепятся.
 
 ---
 

@@ -6,6 +6,14 @@ on:
     tags: ['v*']
   pull_request:
   workflow_dispatch:
+    inputs:
+      release_tag:
+        description: >-
+          Publish a GitHub Release under this tag (for example v1.0.0),
+          attaching the APKs. The tag is created from the selected branch if it
+          does not exist yet. Leave empty to only build.
+        required: false
+        default: ''
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -77,11 +85,16 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
-      - name: Attach APKs to the release
-        if: startsWith(github.ref, 'refs/tags/v')
+      # Runs for a v* tag push, and for a manual run that names a tag. The
+      # action creates the tag and the release when they do not exist yet,
+      # which is what lets a release be cut without push access to tags.
+      - name: Publish the release
+        if: startsWith(github.ref, 'refs/tags/v') || github.event.inputs.release_tag != ''
         uses: softprops/action-gh-release@v2
         with:
           files: dist/*.apk
+          tag_name: ${{ github.event.inputs.release_tag || github.ref_name }}
+          name: Wave ${{ github.event.inputs.release_tag || github.ref_name }}
           generate_release_notes: true
 
   web:
