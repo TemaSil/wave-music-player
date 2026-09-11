@@ -140,43 +140,53 @@ class _SearchScreenState extends State<SearchScreen> {
               SliverToBoxAdapter(
                 child: _Suggestions(onTap: widget.onSuggestion),
               )
-            else
+            else if (_results is Loading<List<Track>>)
+              const SliverToBoxAdapter(
+                child: SizedBox(
+                  height: 160,
+                  child: Center(
+                    child: GlassProgressIndicator.circular(size: 26),
+                  ),
+                ),
+              )
+            else if (_results case Failure<List<Track>>(:final message))
               SliverToBoxAdapter(
                 child: LoadableView<List<Track>>(
-                  state: _results!,
+                  state: Failure(message),
                   accent: palette.primary,
                   onRetry: () => _search(_searched),
-                  builder: (context, tracks) => tracks.isEmpty
-                      ? EmptyState(
-                          icon: CupertinoIcons.search,
-                          title: 'Ничего не найдено по «$_searched»',
-                          subtitle: 'Проверьте написание или смените каталог в настройках.',
-                        )
-                      : Column(
-                          children: [
-                            for (var i = 0; i < tracks.length; i++)
-                              Entrance(
-                                index: i,
-                                child: TrackTile(
-                                  track: tracks[i],
-                                  isCurrent: services.player.isCurrent(
-                                    tracks[i],
-                                  ),
-                                  isPlaying: services.player.isPlaying,
-                                  liked: services.favorites.contains(tracks[i]),
-                                  palette: palette,
-                                  onTap: () => services.player.playQueue(
-                                    tracks,
-                                    startIndex: i,
-                                  ),
-                                  onLike: () =>
-                                      services.favorites.toggle(tracks[i]),
-                                ),
-                              ),
-                          ],
-                        ),
+                  builder: (_, _) => const SizedBox.shrink(),
                 ),
-              ),
+              )
+            else if (_results case Success<List<Track>>(:final value))
+              if (value.isEmpty)
+                SliverToBoxAdapter(
+                  child: EmptyState(
+                    icon: CupertinoIcons.search,
+                    title: 'Ничего не найдено по «$_searched»',
+                    subtitle:
+                        'Проверьте написание или смените каталог в настройках.',
+                  ),
+                )
+              else
+                // A builder rather than a Column: a 50-row result set used to be
+                // laid out in full before a single row appeared on screen.
+                SliverList.builder(
+                  itemCount: value.length,
+                  itemBuilder: (context, i) => Entrance(
+                    index: i,
+                    child: TrackTile(
+                      track: value[i],
+                      isCurrent: services.player.isCurrent(value[i]),
+                      isPlaying: services.player.isPlaying,
+                      liked: services.favorites.contains(value[i]),
+                      palette: palette,
+                      onTap: () =>
+                          services.player.playQueue(value, startIndex: i),
+                      onLike: () => services.favorites.toggle(value[i]),
+                    ),
+                  ),
+                ),
             SliverToBoxAdapter(child: SizedBox(height: widget.contentPadding)),
           ],
         );

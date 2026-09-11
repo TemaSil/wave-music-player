@@ -41,6 +41,11 @@ class _MarqueeTextState extends State<MarqueeText>
   late Animation<double> _travel = const AlwaysStoppedAnimation(0);
   double _overflow = 0;
 
+  /// What the last measurement was taken against. Lists rebuild these rows
+  /// constantly; without this the widget re-laid-out the text and scheduled a
+  /// post-frame callback on every single build.
+  (String, double, TextStyle)? _measuredFor;
+
   @override
   void dispose() {
     _controller.dispose();
@@ -96,6 +101,8 @@ class _MarqueeTextState extends State<MarqueeText>
 
     return LayoutBuilder(
       builder: (context, constraints) {
+        // TextPainter.layout is the expensive half of this widget; it runs once
+        // per (text, width, style) rather than once per build.
         final painter = TextPainter(
           text: TextSpan(text: widget.text, style: style),
           maxLines: 1,
@@ -103,10 +110,15 @@ class _MarqueeTextState extends State<MarqueeText>
         )..layout();
         final overflow = painter.width - constraints.maxWidth;
 
-        // Layout happens during build, so defer the controller work a frame.
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (mounted) _configure(overflow);
-        });
+        // Layout happens during build, so defer the controller work a frame —
+        // but only when the thing being measured actually changed.
+        final key = (widget.text, constraints.maxWidth, style);
+        if (_measuredFor != key) {
+          _measuredFor = key;
+          WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (mounted) _configure(overflow);
+          });
+        }
 
         if (overflow <= 0.5) {
           return Text(

@@ -29,7 +29,26 @@ class _EqualizerBarsState extends State<EqualizerBars>
   late final AnimationController _clock = AnimationController(
     vsync: this,
     duration: const Duration(milliseconds: 1100),
-  )..repeat();
+  );
+
+  @override
+  void initState() {
+    super.initState();
+    if (widget.animating) _clock.repeat();
+  }
+
+  @override
+  void didUpdateWidget(EqualizerBars oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.animating == oldWidget.animating) return;
+    // One of these sits in every row of every list. Left repeating, a screen of
+    // 25 rows kept 25 tickers alive to animate bars nobody was looking at.
+    if (widget.animating) {
+      _clock.repeat();
+    } else {
+      _clock.stop();
+    }
+  }
 
   @override
   void dispose() {

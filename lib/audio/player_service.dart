@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:audio_session/audio_session.dart';
 import 'package:flutter/foundation.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:just_audio_background/just_audio_background.dart';
 
@@ -21,6 +22,47 @@ class PlayerService extends ChangeNotifier {
 
   final AudioPlayer _player;
   final List<StreamSubscription<dynamic>> _subs = [];
+
+  /// Playback position, published separately from [notifyListeners].
+  ///
+  /// The position stream fires many times a second. Routing it through
+  /// [ChangeNotifier] rebuilt every screen that listens to the player — whole
+  /// lists, every artwork, every row — at that rate. Only the handful of
+  /// widgets that actually draw a clock or a progress bar listen here; the
+  /// notifier itself now fires only when something structural changes: the
+  /// track, the queue, play/pause, shuffle, repeat, duration, an error.
+  final ValueNotifier<Duration> positionNotifier = ValueNotifier(Duration.zero);
+
+  /// Buffered position, published on the same terms as [positionNotifier].
+  final ValueNotifier<Duration> bufferedNotifier = ValueNotifier(Duration.zero);
+
+  /// Output volume as the user set it, 0..1. Its own notifier for the same
+  /// reason as the position: dragging the slider should not rebuild the screen
+  /// behind it. The value actually sent to the engine is this multiplied by
+  /// the automix fade, so a fade never moves the slider.
+  final ValueNotifier<double> volumeNotifier = ValueNotifier(1);
+
+  /// Fades the end of one track into the start of the next instead of cutting.
+  ///
+  /// This is the audible half of what iOS 26 calls Automix. The other half —
+  /// picking a transition point by beat and matching tempo between the two
+  /// tracks — needs tempo and key analysis of the audio, which nothing here
+  /// does and which 30-second preview streams would not support anyway. What
+  /// this does is real and honest: a volume ramp out of the last
+  /// [automixFade] of a track and back in over the first [automixFade] of the
+  /// next.
+  bool automix = false;
+
+  /// How long each side of the transition takes.
+  static const automixFade = Duration(seconds: 5);
+
+  Timer? _fadeTicker;
+
+  /// 0..1, multiplied into the engine volume. 1 outside a transition.
+  double _fadeGain = 1;
+
+  /// Set when a track starts, so the fade-in knows where it began.
+  Duration _fadeInFrom = Duration.zero;
 
   List<Track> _queue = const [];
   int _index = -1;
@@ -81,11 +123,11 @@ class PlayerService extends ChangeNotifier {
       }),
       _player.positionStream.listen((p) {
         _position = p;
-        if (_scrubTarget == null) notifyListeners();
+        if (_scrubTarget == null) positionNotifier.value = p;
       }),
       _player.bufferedPositionStream.listen((p) {
         _buffered = p;
-        notifyListeners();
+        bufferedNotifier.value = p;
       }),
       _player.durationStream.listen((d) {
         _duration = d ?? Duration.zero;
@@ -94,6 +136,12 @@ class PlayerService extends ChangeNotifier {
       _player.currentIndexStream.listen((i) {
         if (i != null && i != _index) {
           _index = i;
+          // A new track begins silent when automix is on, and the ticker ramps
+          // it up; without this the fade-in would start at full volume.
+          if (automix) {
+            _fadeInFrom = Duration.zero;
+            _applyGain(0);
+          }
           notifyListeners();
         }
       }),
@@ -108,6 +156,26 @@ class PlayerService extends ChangeNotifier {
       await session.configure(const AudioSessionConfiguration.music());
     } catch (_) {
       // No platform audio session available — playback still works.
+    }
+  }
+
+  /// Whether the notification permission has already been dealt with, so the
+  /// system prompt appears at most once per launch.
+  bool _askedForNotifications = false;
+
+  /// Android 13 and later hide the media notification — and with it the lock
+  /// screen controls — unless POST_NOTIFICATIONS has been granted at runtime.
+  /// Asked on the first play rather than at launch, so the prompt arrives with
+  /// something to explain it.
+  Future<void> _ensureNotifications() async {
+    if (_askedForNotifications) return;
+    _askedForNotifications = true;
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) return;
+    try {
+      final status = await Permission.notification.status;
+      if (status.isDenied) await Permission.notification.request();
+    } catch (_) {
+      // A missing prompt is not worth failing playback over.
     }
   }
 
@@ -138,11 +206,15 @@ class PlayerService extends ChangeNotifier {
       return;
     }
 
+    unawaited(_ensureNotifications());
+
     _error = null;
     _queue = playable;
     _index = resolved;
     _duration = Duration.zero;
     _position = Duration.zero;
+    positionNotifier.value = Duration.zero;
+    bufferedNotifier.value = Duration.zero;
     notifyListeners();
 
     try {
@@ -232,14 +304,68 @@ class PlayerService extends ChangeNotifier {
     final total = duration;
     if (total <= Duration.zero) return;
     _scrubTarget = total * fraction.clamp(0.0, 1.0);
-    notifyListeners();
+    positionNotifier.value = _scrubTarget!;
   }
 
   Future<void> commitScrub() async {
     final target = _scrubTarget;
     _scrubTarget = null;
     if (target != null) await _player.seek(target);
-    notifyListeners();
+    positionNotifier.value = _position;
+  }
+
+  Future<void> setVolume(double value) async {
+    final clamped = value.clamp(0.0, 1.0);
+    volumeNotifier.value = clamped;
+    await _applyGain(_fadeGain);
+  }
+
+  /// Pushes [gain] × the user's volume to the engine.
+  Future<void> _applyGain(double gain) async {
+    _fadeGain = gain.clamp(0.0, 1.0);
+    await _player.setVolume(volumeNotifier.value * _fadeGain);
+  }
+
+  /// Starts or stops the transition ticker to match [automix] and playback.
+  void _syncFadeTicker() {
+    final wanted = automix && _playing;
+    if (wanted == (_fadeTicker != null)) return;
+    if (!wanted) {
+      _fadeTicker?.cancel();
+      _fadeTicker = null;
+      // Leaving automix mid-fade must not strand the volume low.
+      unawaited(_applyGain(1));
+      return;
+    }
+    _fadeTicker = Timer.periodic(
+      const Duration(milliseconds: 120),
+      (_) => _tickFade(),
+    );
+  }
+
+  void _tickFade() {
+    final total = duration;
+    if (total <= Duration.zero) return;
+
+    final fade = automixFade;
+    final remaining = total - _position;
+    final sinceStart = _position - _fadeInFrom;
+
+    final double gain;
+    if (remaining <= fade && _player.hasNext) {
+      // Ramp out — but only with somewhere to go, so the last track of a
+      // queue ends at full volume rather than fading into nothing.
+      gain = (remaining.inMilliseconds / fade.inMilliseconds).clamp(0.0, 1.0);
+    } else if (sinceStart < fade) {
+      gain = (sinceStart.inMilliseconds / fade.inMilliseconds).clamp(0.0, 1.0);
+    } else {
+      gain = 1;
+    }
+
+    // Only talk to the engine when the value actually moved.
+    if ((gain - _fadeGain).abs() > 0.01 || (gain == 1 && _fadeGain != 1)) {
+      unawaited(_applyGain(gain));
+    }
   }
 
   Future<void> toggleShuffle() async {
@@ -263,12 +389,26 @@ class PlayerService extends ChangeNotifier {
     notifyListeners();
   }
 
+  /// Turns transitions on or off from settings.
+  void setAutomix(bool value) {
+    if (automix == value) return;
+    automix = value;
+    _fadeInFrom = _position;
+    _syncFadeTicker();
+    if (!value) unawaited(_applyGain(1));
+    notifyListeners();
+  }
+
   @override
   void dispose() {
+    _fadeTicker?.cancel();
     for (final sub in _subs) {
       sub.cancel();
     }
     _player.dispose();
+    positionNotifier.dispose();
+    bufferedNotifier.dispose();
+    volumeNotifier.dispose();
     super.dispose();
   }
 }

@@ -11,7 +11,7 @@ import '../../data/track.dart';
 Future<void> showSettingsSheet(BuildContext context) {
   return GlassModalSheet.show<void>(
     context: context,
-    halfSize: 0.62,
+    halfSize: 0.86,
     initialState: GlassSheetState.half,
     builder: (_) => const SettingsSheet(),
   );
@@ -58,6 +58,39 @@ class SettingsSheet extends StatelessWidget {
               child: GlassSwitch(
                 value: appearance.ambientMotion,
                 onChanged: appearance.setAmbientMotion,
+                activeColor: accent,
+              ),
+            ),
+
+            const SizedBox(height: 26),
+            Text('Плеер', style: WaveText.title),
+            const SizedBox(height: 14),
+            _SettingRow(
+              title: 'Automix',
+              subtitle: 'Треки перетекают друг в друга за 5 секунд',
+              child: GlassSwitch(
+                value: appearance.automix,
+                onChanged: appearance.setAutomix,
+                activeColor: accent,
+              ),
+            ),
+            const SizedBox(height: 14),
+            _SettingRow(
+              title: 'Винил',
+              subtitle: 'Пластинка выезжает из-за обложки и крутится',
+              child: GlassSwitch(
+                value: appearance.showVinyl,
+                onChanged: appearance.setShowVinyl,
+                activeColor: accent,
+              ),
+            ),
+            const SizedBox(height: 14),
+            _SettingRow(
+              title: 'Визуализатор',
+              subtitle: 'Полосы под названием трека',
+              child: GlassSwitch(
+                value: appearance.showVisualizer,
+                onChanged: appearance.setShowVisualizer,
                 activeColor: accent,
               ),
             ),

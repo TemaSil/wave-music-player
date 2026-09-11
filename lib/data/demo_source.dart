@@ -148,6 +148,20 @@ class DemoSource implements MusicSource {
     ].take(limit).toList();
   }
 
+  @override
+  Future<List<Track>> album(Track track, {int limit = 40}) async {
+    await _latency();
+    final name = track.album;
+    return _catalogue.where((t) => t.album == name).take(limit).toList();
+  }
+
+  @override
+  Future<List<Track>> artist(Track track, {int limit = 40}) async {
+    await _latency();
+    final name = track.artist;
+    return _catalogue.where((t) => t.artist == name).take(limit).toList();
+  }
+
   /// A touch of delay so loading states are still exercised in demo mode.
   Future<void> _latency() =>
       Future<void>.delayed(const Duration(milliseconds: 350));
