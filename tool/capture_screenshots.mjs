@@ -113,6 +113,24 @@ async function main() {
   await page.keyboard.press('Escape');
   await settle(page, 1400);
 
+  // Long-press a row for the action sheet, then follow it to the album. This
+  // is also the end-to-end check that album browsing resolves.
+  const row = page.locator('[aria-label^="Tidewater"]').last();
+  const box = await row.boundingBox();
+  if (box) {
+    await page.mouse.move(box.x + box.width / 2, box.y + box.height / 2);
+    await page.mouse.down();
+    await page.waitForTimeout(900);
+    await page.mouse.up();
+    await settle(page, 1600);
+    await shoot(page, '08-actions');
+    await node(page, 'Показать альбом').click();
+    await settle(page, 3000);
+    await shoot(page, '09-album');
+    await page.goBack();
+    await settle(page, 1600);
+  }
+
   // Start playback from the hero carousel and expand into the full player.
   await node(page, 'Play Aurora Drift').click();
   await settle(page, 2500);

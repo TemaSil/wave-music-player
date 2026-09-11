@@ -29,6 +29,12 @@ abstract interface class MusicSource {
 
   /// Songs matching a mood/genre keyword.
   Future<List<Track>> byMood(String mood, {int limit});
+
+  /// Every track on the album the given track belongs to, in running order.
+  Future<List<Track>> album(Track track, {int limit});
+
+  /// Top tracks by the given track's artist.
+  Future<List<Track>> artist(Track track, {int limit});
 }
 
 /// Apple's iTunes Search API plus the Apple Marketing Tools RSS charts.
@@ -96,6 +102,36 @@ class ItunesSource implements MusicSource {
     ];
   }
 
+  @override
+  Future<List<Track>> album(Track track, {int limit = 40}) async {
+    final id = track.collectionId;
+    if (id == null) {
+      return search('${track.artist} ${track.album}', limit: limit);
+    }
+    final uri = Uri.https('itunes.apple.com', '/lookup', {
+      'id': id,
+      'entity': 'song',
+      'limit': '$limit',
+      'country': storefront,
+    });
+    // The first result of an album lookup is the album itself, not a track;
+    // _songs drops it because its wrapperType is 'collection'.
+    return _songs(await _getJson(uri));
+  }
+
+  @override
+  Future<List<Track>> artist(Track track, {int limit = 40}) async {
+    final id = track.artistId;
+    if (id == null) return search(track.artist, limit: limit);
+    final uri = Uri.https('itunes.apple.com', '/lookup', {
+      'id': id,
+      'entity': 'song',
+      'limit': '$limit',
+      'country': storefront,
+    });
+    return _songs(await _getJson(uri));
+  }
+
   List<Track> _songs(Map<String, dynamic> json) {
     final results = (json['results'] as List?) ?? const [];
     return results
@@ -137,6 +173,31 @@ class DeezerSource implements MusicSource {
   @override
   Future<List<Track>> charts({int limit = 25}) async {
     final uri = Uri.https('api.deezer.com', '/chart/0/tracks', {
+      'limit': '$limit',
+    });
+    return _songs(await _requestJson(_client, uri));
+  }
+
+  @override
+  Future<List<Track>> album(Track track, {int limit = 40}) async {
+    final id = track.collectionId;
+    if (id == null) {
+      return search('${track.artist} ${track.album}', limit: limit);
+    }
+    final uri = Uri.https('api.deezer.com', '/album/$id/tracks', {
+      'limit': '$limit',
+    });
+    // Album track payloads omit the cover, so carry the album's own artwork.
+    return _songs(await _requestJson(_client, uri))
+        .map((t) => t.withArtwork(track.artworkUrl))
+        .toList();
+  }
+
+  @override
+  Future<List<Track>> artist(Track track, {int limit = 40}) async {
+    final id = track.artistId;
+    if (id == null) return search(track.artist, limit: limit);
+    final uri = Uri.https('api.deezer.com', '/artist/$id/top', {
       'limit': '$limit',
     });
     return _songs(await _requestJson(_client, uri));
@@ -225,4 +286,12 @@ class MusicRepository {
 
   Future<List<Track>> byMood(Mood mood, {int limit = 40}) =>
       active.byMood(mood.query, limit: limit);
+
+  /// Browsing an album or an artist stays on the catalogue the track came
+  /// from, not whichever one happens to be selected.
+  Future<List<Track>> album(Track track, {int limit = 40}) =>
+      _sources[track.source]!.album(track, limit: limit);
+
+  Future<List<Track>> artist(Track track, {int limit = 40}) =>
+      _sources[track.source]!.artist(track, limit: limit);
 }

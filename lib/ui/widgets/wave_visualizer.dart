@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 
 import 'package:flutter/widgets.dart';
 
@@ -93,6 +94,22 @@ class _VisualizerPainter extends CustomPainter {
     final centerY = size.height / 2;
     final colors = palette.all;
 
+    // The glow used to be a MaskFilter.blur on every single bar, which is one
+    // blur per bar per frame — 44 of them at 60fps. Drawing the bars once into
+    // a blurred layer and once sharp on top costs two passes total and looks
+    // the same.
+    final glowing = amplitude > 0.05;
+    if (glowing) {
+      canvas.saveLayer(
+        Offset.zero & size,
+        Paint()
+          ..imageFilter = ui.ImageFilter.blur(
+            sigmaX: 2.5 * amplitude,
+            sigmaY: 2.5 * amplitude,
+          ),
+      );
+    }
+
     for (var i = 0; i < barCount; i++) {
       final x = barCount == 1 ? 0.5 : i / (barCount - 1);
 
@@ -126,13 +143,11 @@ class _VisualizerPainter extends CustomPainter {
 
       canvas.drawRRect(
         rect,
-        Paint()
-          ..color = color.withValues(alpha: 0.35 + 0.55 * value)
-          ..maskFilter = amplitude > 0.05
-              ? MaskFilter.blur(BlurStyle.normal, 1.5 * amplitude)
-              : null,
+        Paint()..color = color.withValues(alpha: 0.35 + 0.55 * value),
       );
     }
+
+    if (glowing) canvas.restore();
   }
 
   @override

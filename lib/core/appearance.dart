@@ -24,11 +24,17 @@ enum WaveSkin {
 class AppearanceController extends ChangeNotifier {
   static const _skinKey = 'wave.appearance.skin.v1';
   static const _motionKey = 'wave.appearance.motion.v1';
+  static const _vinylKey = 'wave.appearance.vinyl.v1';
+  static const _visualizerKey = 'wave.appearance.visualizer.v1';
+  static const _automixKey = 'wave.playback.automix.v1';
 
   SharedPreferences? _prefs;
 
   WaveSkin _skin = WaveSkin.appleMusic;
   bool _ambientMotion = true;
+  bool _showVinyl = false;
+  bool _showVisualizer = false;
+  bool _automix = false;
 
   WaveSkin get skin => _skin;
 
@@ -37,6 +43,18 @@ class AppearanceController extends ChangeNotifier {
   /// moving, and that is not for everyone.
   bool get ambientMotion => _ambientMotion;
 
+  /// Spins a record out from behind the cover on Now Playing. Off by default,
+  /// because Apple Music has no such thing and the point of the default skin is
+  /// to match it.
+  bool get showVinyl => _showVinyl;
+
+  /// Draws the synthesised bar visualiser under the title on Now Playing. Off
+  /// for the same reason as [showVinyl].
+  bool get showVisualizer => _showVisualizer;
+
+  /// Fades one track into the next instead of cutting between them.
+  bool get automix => _automix;
+
   /// True when the artwork should drive the palette of the whole interface.
   bool get usesLiveColour => _skin == WaveSkin.aurora;
 
@@ -44,6 +62,9 @@ class AppearanceController extends ChangeNotifier {
     _prefs = await SharedPreferences.getInstance();
     _skin = WaveSkin.fromKey(_prefs?.getString(_skinKey));
     _ambientMotion = _prefs?.getBool(_motionKey) ?? true;
+    _showVinyl = _prefs?.getBool(_vinylKey) ?? false;
+    _showVisualizer = _prefs?.getBool(_visualizerKey) ?? false;
+    _automix = _prefs?.getBool(_automixKey) ?? false;
     notifyListeners();
   }
 
@@ -55,11 +76,32 @@ class AppearanceController extends ChangeNotifier {
     await _prefs!.setString(_skinKey, skin.key);
   }
 
-  Future<void> setAmbientMotion(bool value) async {
-    if (_ambientMotion == value) return;
-    _ambientMotion = value;
+  Future<void> setAmbientMotion(bool value) =>
+      _setFlag(_motionKey, value, (v) => _ambientMotion = v, _ambientMotion);
+
+  Future<void> setShowVinyl(bool value) =>
+      _setFlag(_vinylKey, value, (v) => _showVinyl = v, _showVinyl);
+
+  Future<void> setShowVisualizer(bool value) => _setFlag(
+    _visualizerKey,
+    value,
+    (v) => _showVisualizer = v,
+    _showVisualizer,
+  );
+
+  Future<void> setAutomix(bool value) =>
+      _setFlag(_automixKey, value, (v) => _automix = v, _automix);
+
+  Future<void> _setFlag(
+    String key,
+    bool value,
+    void Function(bool) assign,
+    bool current,
+  ) async {
+    if (current == value) return;
+    assign(value);
     notifyListeners();
     _prefs ??= await SharedPreferences.getInstance();
-    await _prefs!.setBool(_motionKey, value);
+    await _prefs!.setBool(key, value);
   }
 }

@@ -1,7 +1,10 @@
 import 'package:flutter/cupertino.dart';
 
+import '../../core/wave_scope.dart';
+
 import '../../core/wave_theme.dart';
 import '../../data/track.dart';
+import '../screens/now_playing_screen.dart';
 import 'artwork_image.dart';
 import 'equalizer_bars.dart';
 import 'like_button.dart';
@@ -108,7 +111,14 @@ class TrackTile extends StatelessWidget {
       child: row,
     );
 
-    return PressScale(onTap: onTap, child: content);
+    return PressScale(
+      onTap: onTap,
+      // Long press opens the same sheet as the "…" button on Now Playing, so
+      // an album or an artist is one gesture away from any list.
+      onLongPress: () =>
+          showTrackActions(context, track, WaveScope.of(context)),
+      child: content,
+    );
   }
 
   Widget _buildArtwork(Color accent) {
@@ -148,13 +158,17 @@ class TrackTile extends StatelessWidget {
               borderRadius: BorderRadius.circular(14),
               color: const Color(0xFF000000).withValues(alpha: 0.45),
             ),
-            child: Center(
-              child: EqualizerBars(
-                color: const Color(0xFFFFFFFF),
-                animating: isCurrent && isPlaying,
-                size: 16,
-              ),
-            ),
+            // Built only for the row that is actually playing: otherwise every
+            // row in the list carries its own painter for an invisible widget.
+            child: isCurrent
+                ? Center(
+                    child: EqualizerBars(
+                      color: const Color(0xFFFFFFFF),
+                      animating: isPlaying,
+                      size: 16,
+                    ),
+                  )
+                : null,
           ),
         ),
       ],

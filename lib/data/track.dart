@@ -34,6 +34,8 @@ class Track {
     this.duration = Duration.zero,
     this.genre = '',
     this.releaseYear,
+    this.collectionId,
+    this.artistId,
   });
 
   final String id;
@@ -47,6 +49,13 @@ class Track {
   final Duration duration;
   final String genre;
   final int? releaseYear;
+
+  /// Catalogue ids for the album and the artist this track belongs to, used to
+  /// browse to them. Null when the catalogue did not supply one — the
+  /// repository falls back to a text search in that case.
+  final String? collectionId;
+  final String? artistId;
+
   final MusicSourceId source;
 
   bool get isPlayable => previewUrl != null && previewUrl!.isNotEmpty;
@@ -106,6 +115,8 @@ class Track {
               as String,
       previewUrl: json['preview'] as String?,
       duration: Duration(seconds: (json['duration'] as int?) ?? 0),
+      collectionId: album?['id']?.toString(),
+      artistId: artist?['id']?.toString(),
       source: MusicSourceId.deezer,
     );
   }
@@ -134,6 +145,23 @@ class Track {
     genre: (json['genre'] ?? '') as String,
     releaseYear: json['releaseYear'] as int?,
     source: MusicSourceId.fromKey(json['source'] as String?),
+  );
+
+  /// Deezer's album-track payloads omit the cover; this carries the album's
+  /// own artwork onto them.
+  Track withArtwork(String url) => Track(
+    id: id,
+    title: title,
+    artist: artist,
+    album: album,
+    artworkUrl: url,
+    previewUrl: previewUrl,
+    duration: duration,
+    genre: genre,
+    releaseYear: releaseYear,
+    collectionId: collectionId,
+    artistId: artistId,
+    source: source,
   );
 
   @override

@@ -10,6 +10,10 @@
     <uses-permission android:name="android.permission.WAKE_LOCK"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE"/>
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK"/>
+    <!-- Android 13+ will not show the media notification without this, and
+         neither audio_service nor just_audio_background declares it. It also
+         has to be granted at runtime — see MainActivity. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
 
     <application
         android:label="Wave"

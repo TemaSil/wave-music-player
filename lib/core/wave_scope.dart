@@ -81,7 +81,12 @@ class WaveServices {
       palettes = PaletteService(),
       appearance = AppearanceController() {
     ambience = AmbienceNotifier(player, palettes, appearance);
+    // Settings own the switch; the player owns the behaviour.
+    appearance.addListener(_syncPlaybackSettings);
+    _syncPlaybackSettings();
   }
+
+  void _syncPlaybackSettings() => player.setAutomix(appearance.automix);
 
   final PlayerService player;
   final MusicRepository music;
@@ -91,6 +96,7 @@ class WaveServices {
   late final AmbienceNotifier ambience;
 
   void dispose() {
+    appearance.removeListener(_syncPlaybackSettings);
     ambience.dispose();
     player.dispose();
     favorites.dispose();
