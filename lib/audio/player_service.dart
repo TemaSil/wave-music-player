@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:audio_session/audio_session.dart';
 import 'package:flutter/foundation.dart';
-import 'package:permission_handler/permission_handler.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:just_audio_background/just_audio_background.dart';
 
@@ -159,26 +158,6 @@ class PlayerService extends ChangeNotifier {
     }
   }
 
-  /// Whether the notification permission has already been dealt with, so the
-  /// system prompt appears at most once per launch.
-  bool _askedForNotifications = false;
-
-  /// Android 13 and later hide the media notification — and with it the lock
-  /// screen controls — unless POST_NOTIFICATIONS has been granted at runtime.
-  /// Asked on the first play rather than at launch, so the prompt arrives with
-  /// something to explain it.
-  Future<void> _ensureNotifications() async {
-    if (_askedForNotifications) return;
-    _askedForNotifications = true;
-    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) return;
-    try {
-      final status = await Permission.notification.status;
-      if (status.isDenied) await Permission.notification.request();
-    } catch (_) {
-      // A missing prompt is not worth failing playback over.
-    }
-  }
-
   /// Replaces the queue with [tracks] and starts at [startIndex].
   ///
   /// Unplayable entries (no preview stream) are dropped first so that skipping
@@ -205,8 +184,6 @@ class PlayerService extends ChangeNotifier {
       await toggle();
       return;
     }
-
-    unawaited(_ensureNotifications());
 
     _error = null;
     _queue = playable;
