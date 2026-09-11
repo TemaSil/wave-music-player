@@ -25,8 +25,11 @@
 |---|---|
 | 📦 **Скачать APK** | [**Последний релиз →**](https://github.com/TemaSil/wave-music-player/releases/latest) — `wave-arm64-v8a.apk` для большинства современных телефонов, `wave-universal.apk` — если не уверены |
 | 🧪 **Сборка с любого коммита** | [Actions → CI → артефакт `wave-apk`](https://github.com/TemaSil/wave-music-player/actions/workflows/ci.yml) (нужен вход в GitHub) |
-| 🌐 **Попробовать в браузере** | [temasil.github.io/wave-music-player](https://temasil.github.io/wave-music-player/) — публикуется из ветки `main` |
+| 🌐 **Попробовать в браузере** | [temasil.github.io/wave-music-player](https://temasil.github.io/wave-music-player/) — публикуется из ветки `main` <sup>*</sup> |
 | 📱 **Собрать самому** | [Инструкции ниже](#сборка) |
+
+> <sup>*</sup> Чтобы страница заработала, в настройках репозитория нужно один раз включить
+> **Settings → Pages → Source: GitHub Actions**. Деплой идёт только с `main`.
 
 > **Про подпись APK.** Релизные APK подписаны отладочным ключом Flutter по умолчанию —
 > этого достаточно, чтобы поставить и запустить, но Android покажет предупреждение об
@@ -44,7 +47,7 @@
 </tr>
 <tr>
 <td align="center"><img src="docs/screenshots/02-mini-player.png" width="200"><br><sub><b>Мини-плеер</b><br>аксессуар таб-бара, как в iOS 26</sub></td>
-<td align="center"><img src="docs/screenshots/06-search-results.png" width="200"><br><sub><b>Поиск</b><br>с переключателем каталога</sub></td>
+<td align="center"><img src="docs/screenshots/06-search-results.png" width="200"><br><sub><b>Поиск</b><br>живой поиск по каталогу</sub></td>
 <td align="center"><img src="docs/screenshots/07-library.png" width="200"><br><sub><b>Библиотека</b><br>лайки, сохранённые локально</sub></td>
 </tr>
 </table>
