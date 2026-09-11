@@ -34,6 +34,18 @@ class _RootShellState extends State<RootShell> {
     (_) => ScrollController(),
   );
 
+  /// Drives the iOS 26 tab bar behaviour: the bar compresses as you scroll
+  /// down and springs back open on the way up, with the mini player animating
+  /// inline into the shrunken bar. One per tab, since each tab scrolls on its
+  /// own.
+  final List<GlassTabBarMinimizeController> _minimizeControllers =
+      List.generate(
+        3,
+        (_) => GlassTabBarMinimizeController(
+          behavior: GlassBarMinimizeBehavior.onScrollDown,
+        ),
+      );
+
   int _index = 0;
 
   @override
@@ -42,11 +54,16 @@ class _RootShellState extends State<RootShell> {
     for (final controller in _scrollControllers) {
       controller.dispose();
     }
+    for (final controller in _minimizeControllers) {
+      controller.dispose();
+    }
     super.dispose();
   }
 
   void _selectTab(int index) {
     if (index == _index) {
+      // A tap on the active tab also re-expands a minimized bar, like iOS.
+      _minimizeControllers[index].expand();
       // Re-tapping the active tab scrolls it back to the top, like iOS.
       final controller = _scrollControllers[index];
       if (controller.hasClients) {
@@ -82,14 +99,18 @@ class _RootShellState extends State<RootShell> {
             palette: palette,
             energy: player.isPlaying ? 1 : 0,
           ),
-          bottomBar: GlassTabBar.bottom(
+          bottomBar: GlassTabBar.minimizable(
             tabs: _tabs,
             selectedIndex: _index,
             onTabSelected: _selectTab,
             scrollController: _scrollControllers[_index],
+            minimizeController: _minimizeControllers[_index],
+            onMinimizedTabTap: _minimizeControllers[_index].expand,
             selectedIconColor: palette.primary,
             selectedLabelColor: palette.primary,
             indicatorColor: palette.primary.withValues(alpha: 0.30),
+            // No explicit placement: the accessory collapses into the bar as
+            // it minimizes, the way iOS animates a tabViewBottomAccessory.
             bottomAccessory: MiniPlayer(player: player, palette: palette),
             bottomAccessoryEnabled: player.hasTrack,
             bottomAccessoryHeight: MiniPlayer.height,

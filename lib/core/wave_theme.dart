@@ -86,6 +86,16 @@ abstract final class WaveMotion {
   static const overshoot = Cubic(0.34, 1.4, 0.64, 1.0);
 }
 
+/// Cupertino's own family name. On iOS and macOS the engine resolves it to the
+/// real SF Pro; everywhere else it does not exist, and Flutter falls through to
+/// [_fallback].
+const _systemFamily = 'CupertinoSystemText';
+
+/// Inter, bundled in `assets/fonts/`. Without it Android and web render the
+/// whole app in Roboto, which is the single loudest signal that this is not an
+/// Apple interface.
+const _fallback = <String>['Inter'];
+
 abstract final class WaveText {
   static const largeTitle = TextStyle(
     fontSize: 32,
@@ -93,6 +103,9 @@ abstract final class WaveText {
     fontWeight: FontWeight.w700,
     letterSpacing: -0.6,
     color: WaveColors.textPrimary,
+
+    fontFamily: _systemFamily,
+    fontFamilyFallback: _fallback,
   );
 
   static const title = TextStyle(
@@ -100,6 +113,9 @@ abstract final class WaveText {
     fontWeight: FontWeight.w700,
     letterSpacing: -0.3,
     color: WaveColors.textPrimary,
+
+    fontFamily: _systemFamily,
+    fontFamilyFallback: _fallback,
   );
 
   static const section = TextStyle(
@@ -107,18 +123,27 @@ abstract final class WaveText {
     fontWeight: FontWeight.w700,
     letterSpacing: -0.1,
     color: WaveColors.textPrimary,
+
+    fontFamily: _systemFamily,
+    fontFamilyFallback: _fallback,
   );
 
   static const body = TextStyle(
     fontSize: 15,
     fontWeight: FontWeight.w600,
     color: WaveColors.textPrimary,
+
+    fontFamily: _systemFamily,
+    fontFamilyFallback: _fallback,
   );
 
   static const caption = TextStyle(
     fontSize: 13,
     fontWeight: FontWeight.w500,
     color: WaveColors.textSecondary,
+
+    fontFamily: _systemFamily,
+    fontFamilyFallback: _fallback,
   );
 
   static const tiny = TextStyle(
@@ -126,6 +151,9 @@ abstract final class WaveText {
     fontWeight: FontWeight.w600,
     letterSpacing: 0.4,
     color: WaveColors.textTertiary,
+
+    fontFamily: _systemFamily,
+    fontFamilyFallback: _fallback,
   );
 }
 

@@ -338,6 +338,7 @@ class _Controls extends StatelessWidget {
                 onTap: player.toggle,
                 accent: palette.primary,
                 size: 72,
+                quality: GlassQuality.premium,
               ),
               _TransportIcon(
                 icon: CupertinoIcons.forward_end_fill,

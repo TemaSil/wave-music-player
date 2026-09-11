@@ -26,7 +26,10 @@ Future<void> main() async {
 
   runApp(
     LiquidGlassWidgets.wrap(
-      adaptiveQuality: true,
+      // Without this the package cannot see that the app is in dark mode, and
+      // its own docs warn that glass borders and shadows then drop out — which
+      // is what made the chrome read as flat grey instead of glass.
+      brightnessResolver: CupertinoTheme.maybeBrightnessOf,
       theme: GlassThemeData.simple(
         blur: 12,
         thickness: 24,
@@ -74,6 +77,8 @@ class _WaveAppState extends State<WaveApp> {
           textTheme: CupertinoTextThemeData(
             primaryColor: WaveColors.textPrimary,
             textStyle: WaveText.body,
+            navTitleTextStyle: WaveText.section,
+            navLargeTitleTextStyle: WaveText.largeTitle,
           ),
         ),
         home: RootShell(),
