@@ -11,16 +11,6 @@ import '../widgets/entrance.dart';
 import '../widgets/loadable.dart';
 import '../widgets/track_tile.dart';
 
-/// Free-text search across the active catalogue, with a source switcher.
-class SearchScreen extends StatefulWidget {
-  const SearchScreen({super.key, required this.scrollController});
-
-  final ScrollController scrollController;
-
-  @override
-  State<SearchScreen> createState() => _SearchScreenState();
-}
-
 /// Shown before the first query, so the empty screen still offers a way in.
 const _kSuggestions = [
   'Fred again',
@@ -46,29 +36,52 @@ const _kDemoSuggestions = [
 
 List<String> get _suggestions => kDemoMode ? _kDemoSuggestions : _kSuggestions;
 
-class _SearchScreenState extends State<SearchScreen>
-    with AutomaticKeepAliveClientMixin {
-  final TextEditingController _field = TextEditingController();
+/// Search results for the query typed into the tab bar's search capsule.
+///
+/// The field itself belongs to `GlassTabBar.searchable`, the way Apple Music
+/// puts search in the bar rather than at the top of the page; this screen only
+/// renders what the query returns.
+class SearchScreen extends StatefulWidget {
+  const SearchScreen({
+    super.key,
+    required this.query,
+    required this.contentPadding,
+    required this.onSuggestion,
+  });
+
+  final String query;
+  final double contentPadding;
+
+  /// Fills the bar's field when a suggestion chip is tapped.
+  final ValueChanged<String> onSuggestion;
+
+  @override
+  State<SearchScreen> createState() => _SearchScreenState();
+}
+
+class _SearchScreenState extends State<SearchScreen> {
   Timer? _debounce;
   Loadable<List<Track>>? _results;
-  String _query = '';
+  String _searched = '';
   int _token = 0;
 
   @override
-  bool get wantKeepAlive => true;
+  void didUpdateWidget(SearchScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.query != oldWidget.query) _schedule(widget.query);
+  }
 
   @override
   void dispose() {
     _debounce?.cancel();
-    _field.dispose();
     super.dispose();
   }
 
-  void _onChanged(String value) {
+  void _schedule(String value) {
     _debounce?.cancel();
     if (value.trim().isEmpty) {
       setState(() {
-        _query = '';
+        _searched = '';
         _results = null;
       });
       return;
@@ -82,7 +95,7 @@ class _SearchScreenState extends State<SearchScreen>
     if (query.isEmpty) return;
     final token = ++_token;
     setState(() {
-      _query = query;
+      _searched = query;
       _results = const Loading();
     });
 
@@ -98,26 +111,16 @@ class _SearchScreenState extends State<SearchScreen>
       }
     } catch (_) {
       if (mounted && token == _token) {
-        setState(() => _results = const Failure('Search failed. Try again.'));
+        setState(
+          () =>
+              _results = const Failure('Поиск не удался. Попробуйте ещё раз.'),
+        );
       }
     }
   }
 
-  void _runSuggestion(String value) {
-    _field.text = value;
-    _search(value);
-  }
-
-  void _switchSource(MusicSourceId id) {
-    final music = WaveScope.of(context).music;
-    if (music.activeId == id) return;
-    setState(() => music.activeId = id);
-    if (_query.isNotEmpty) _search(_query);
-  }
-
   @override
   Widget build(BuildContext context) {
-    super.build(context);
     final services = WaveScope.of(context);
 
     return ListenableBuilder(
@@ -129,65 +132,25 @@ class _SearchScreenState extends State<SearchScreen>
       builder: (context, _) {
         final palette = services.ambience.value;
         return CustomScrollView(
-          controller: widget.scrollController,
           slivers: [
             SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(20, 10, 20, 12),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    const Text('Search', style: WaveText.largeTitle),
-                    const SizedBox(height: 14),
-                    GlassSearchBar(
-                      controller: _field,
-                      placeholder: 'Songs, artists, albums…',
-                      onChanged: _onChanged,
-                      onSubmitted: _search,
-                      showsCancelButton: true,
-                      onCancel: () {
-                        _field.clear();
-                        _onChanged('');
-                      },
-                    ),
-                    // Demo mode has a single bundled catalogue, so there is
-                    // nothing to switch between.
-                    if (!kDemoMode) ...[
-                      const SizedBox(height: 12),
-                      GlassSegmentedControl(
-                        segments: const [
-                          GlassSegment(label: 'Apple / iTunes'),
-                          GlassSegment(label: 'Deezer'),
-                        ],
-                        selectedIndex:
-                            services.music.activeId == MusicSourceId.itunes
-                            ? 0
-                            : 1,
-                        onSegmentSelected: (index) => _switchSource(
-                          index == 0
-                              ? MusicSourceId.itunes
-                              : MusicSourceId.deezer,
-                        ),
-                      ),
-                    ],
-                  ],
-                ),
-              ),
+              child: SizedBox(height: MediaQuery.paddingOf(context).top + 12),
             ),
             if (_results == null)
-              SliverToBoxAdapter(child: _Suggestions(onTap: _runSuggestion))
+              SliverToBoxAdapter(
+                child: _Suggestions(onTap: widget.onSuggestion),
+              )
             else
               SliverToBoxAdapter(
                 child: LoadableView<List<Track>>(
                   state: _results!,
                   accent: palette.primary,
-                  onRetry: () => _search(_query),
+                  onRetry: () => _search(_searched),
                   builder: (context, tracks) => tracks.isEmpty
                       ? EmptyState(
                           icon: CupertinoIcons.search,
-                          title: 'No results for "$_query"',
-                          subtitle:
-                              'Check the spelling, or try the other catalogue.',
+                          title: 'Ничего не найдено по «$_searched»',
+                          subtitle: 'Проверьте написание или смените каталог в настройках.',
                         )
                       : Column(
                           children: [
@@ -214,7 +177,7 @@ class _SearchScreenState extends State<SearchScreen>
                         ),
                 ),
               ),
-            const SliverToBoxAdapter(child: SizedBox(height: 160)),
+            SliverToBoxAdapter(child: SizedBox(height: widget.contentPadding)),
           ],
         );
       },
@@ -234,7 +197,7 @@ class _Suggestions extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Text('TRY SOMETHING', style: WaveText.tiny),
+          Text('ПОПРОБУЙТЕ', style: WaveText.tiny),
           const SizedBox(height: 12),
           Wrap(
             spacing: 8,

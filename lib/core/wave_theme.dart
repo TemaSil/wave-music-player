@@ -1,4 +1,5 @@
 import 'package:flutter/cupertino.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 /// Static colour tokens for Wave.
 ///
@@ -6,8 +7,18 @@ import 'package:flutter/cupertino.dart';
 /// structure (ink, text, hairlines) so that a dark cover and a neon cover both
 /// stay legible.
 abstract final class WaveColors {
-  /// Deepest background tone — everything else floats above this.
+  /// Deepest background tone for the aurora skin — everything floats above it.
   static const abyss = Color(0xFF05050B);
+
+  /// Apple Music is pure black in dark mode; anything lighter reads as a
+  /// knock-off immediately.
+  static const appleBackground = Color(0xFF000000);
+
+  /// Apple Music's accent, taken from the reference demo the package ships.
+  static const musicRed = Color(0xFFFF2D55);
+
+  /// The grey Apple Music fills its cards and rows with.
+  static const appleCard = Color(0xFF2C2C2E);
 
   /// Default accents, used until artwork colours have been extracted.
   static const violet = Color(0xFF8B5CF6);
@@ -36,6 +47,14 @@ class WavePalette {
     WaveColors.violet,
     WaveColors.cyan,
     WaveColors.magenta,
+  );
+
+  /// The fixed palette used when live artwork colour is switched off, so every
+  /// accent-driven widget keeps working without special-casing the skin.
+  static const appleMusic = WavePalette(
+    WaveColors.musicRed,
+    Color(0xFFFF6482),
+    Color(0xFFE2072C),
   );
 
   final Color primary;
@@ -86,6 +105,16 @@ abstract final class WaveMotion {
   static const overshoot = Cubic(0.34, 1.4, 0.64, 1.0);
 }
 
+/// Cupertino's own family name. On iOS and macOS the engine resolves it to the
+/// real SF Pro; everywhere else it does not exist, and Flutter falls through to
+/// [_fallback].
+const _systemFamily = 'CupertinoSystemText';
+
+/// Inter, bundled in `assets/fonts/`. Without it Android and web render the
+/// whole app in Roboto, which is the single loudest signal that this is not an
+/// Apple interface.
+const _fallback = <String>['Inter'];
+
 abstract final class WaveText {
   static const largeTitle = TextStyle(
     fontSize: 32,
@@ -93,6 +122,9 @@ abstract final class WaveText {
     fontWeight: FontWeight.w700,
     letterSpacing: -0.6,
     color: WaveColors.textPrimary,
+
+    fontFamily: _systemFamily,
+    fontFamilyFallback: _fallback,
   );
 
   static const title = TextStyle(
@@ -100,6 +132,9 @@ abstract final class WaveText {
     fontWeight: FontWeight.w700,
     letterSpacing: -0.3,
     color: WaveColors.textPrimary,
+
+    fontFamily: _systemFamily,
+    fontFamilyFallback: _fallback,
   );
 
   static const section = TextStyle(
@@ -107,18 +142,27 @@ abstract final class WaveText {
     fontWeight: FontWeight.w700,
     letterSpacing: -0.1,
     color: WaveColors.textPrimary,
+
+    fontFamily: _systemFamily,
+    fontFamilyFallback: _fallback,
   );
 
   static const body = TextStyle(
     fontSize: 15,
     fontWeight: FontWeight.w600,
     color: WaveColors.textPrimary,
+
+    fontFamily: _systemFamily,
+    fontFamilyFallback: _fallback,
   );
 
   static const caption = TextStyle(
     fontSize: 13,
     fontWeight: FontWeight.w500,
     color: WaveColors.textSecondary,
+
+    fontFamily: _systemFamily,
+    fontFamilyFallback: _fallback,
   );
 
   static const tiny = TextStyle(
@@ -126,6 +170,9 @@ abstract final class WaveText {
     fontWeight: FontWeight.w600,
     letterSpacing: 0.4,
     color: WaveColors.textTertiary,
+
+    fontFamily: _systemFamily,
+    fontFamilyFallback: _fallback,
   );
 }
 
@@ -137,4 +184,26 @@ String formatDuration(Duration d) {
     return '$hours:${minutes.remainder(60).toString().padLeft(2, '0')}:$seconds';
   }
   return '$minutes:$seconds';
+}
+
+/// Glass tuned to match Apple Music rather than a generic frosted panel.
+///
+/// The values come from the Apple Music reference demo shipped with
+/// `liquid_glass_widgets`, and they are not what you would guess: the blur is
+/// almost nothing (2) while the glass is thick (30) with the Fresnel rim
+/// switched off entirely. Heavy blur with a bright rim — the obvious setting —
+/// is exactly what makes a fake iOS 26 look foggy instead of solid.
+LiquidGlassSettings appleMusicGlass({double alpha = 0.80, Color? tint}) {
+  return LiquidGlassSettings(
+    glassColor: (tint ?? const Color(0xFF1C1C1E)).withValues(alpha: alpha),
+    thickness: 30,
+    blur: 2,
+    chromaticAberration: 0.01,
+    lightAngle: GlassDefaults.lightAngle,
+    lightIntensity: 0.2,
+    ambientStrength: 0,
+    refractiveIndex: 1.2,
+    fresnelStrength: 0,
+    saturation: 1.2,
+  );
 }

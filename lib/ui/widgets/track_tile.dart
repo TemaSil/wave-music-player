@@ -1,5 +1,4 @@
 import 'package:flutter/cupertino.dart';
-import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 
 import '../../core/wave_theme.dart';
 import '../../data/track.dart';
@@ -92,24 +91,21 @@ class TrackTile extends StatelessWidget {
       ),
     );
 
-    // AnimatedSwitcher would rebuild the row; a cross-fading slab keeps the
-    // layout identical and only the background changes.
+    // Deliberately not glass. iOS 26 reserves glass for the navigation and
+    // control layer — bars, toolbars, floating controls — and keeps list rows
+    // opaque. Glass here fought the tab bar for attention and refracted the
+    // rows underneath into mush.
     final content = AnimatedContainer(
       duration: WaveMotion.medium,
       curve: WaveMotion.emphasized,
       margin: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-      child: isCurrent
-          ? GlassContainer(
-              shape: const LiquidRoundedSuperellipse(borderRadius: 18),
-              settings: LiquidGlassSettings(
-                blur: 8,
-                thickness: 14,
-                glassColor: accent.withValues(alpha: 0.14),
-                lightIntensity: 0.6,
-              ),
-              child: row,
-            )
-          : row,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(18),
+        color: isCurrent
+            ? accent.withValues(alpha: 0.13)
+            : const Color(0x00000000),
+      ),
+      child: row,
     );
 
     return PressScale(onTap: onTap, child: content);

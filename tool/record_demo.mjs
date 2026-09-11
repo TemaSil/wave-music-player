@@ -102,11 +102,20 @@ async function main() {
   await page.mouse.up();
   await wait(900);
 
-  // Play whichever card the swipe landed on, then expand into the full player.
-  // Only the centred card exposes its play button to the semantics tree, so
-  // matching on the prefix is what keeps this independent of the swipe.
+  // Play whichever card the swipe landed on. Only the centred card exposes its
+  // play button to the semantics tree, so match on the prefix.
   await page.locator('[aria-label^="Play "]').last().click();
-  await wait(1400);
+  await wait(1600);
+
+  // Scroll: the tab bar spring-collapses and the play pill slides inline
+  // between the tab glyph and the search capsule — the iOS 26 behaviour.
+  await page.mouse.move(centre, 560);
+  await page.mouse.wheel(0, 460);
+  await wait(1600);
+  await page.mouse.wheel(0, -460);
+  await wait(1200);
+
+  // Expand into the full player.
   await page.locator('[aria-label^="Now playing:"]').last().click();
   await wait(2200);
 
@@ -129,9 +138,13 @@ async function main() {
   await page.goBack();
   await wait(1100);
 
-  // Tab hop, so the glass indicator and the mini player are both in shot.
-  await page.locator('[aria-label="Library"]').last().click();
-  await wait(1500);
+  // Appearance settings: the live-colour skin repaints the whole app.
+  await page.mouse.click(VIEWPORT.width - 34, 22);
+  await wait(1400);
+  await page.mouse.click(centre, 490);
+  await wait(1600);
+  await page.keyboard.press('Escape');
+  await wait(2000);
 
   const duration = (Date.now() - startedAt) / 1000 - trimFrom;
   const video = page.video();

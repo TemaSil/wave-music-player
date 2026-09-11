@@ -159,19 +159,19 @@ Future<Map<String, dynamic>> _requestJson(http.Client client, Uri uri) async {
         .get(uri, headers: const {'Accept': 'application/json'})
         .timeout(const Duration(seconds: 15));
   } catch (e) {
-    throw MusicApiException('Network unavailable — check your connection.');
+    throw MusicApiException('Нет сети — проверьте подключение.');
   }
   if (response.statusCode != 200) {
-    throw MusicApiException('Catalogue returned ${response.statusCode}.');
+    throw MusicApiException('Каталог ответил ошибкой ${response.statusCode}.');
   }
   // iTunes serves its JSON as text/javascript, so decode the bytes ourselves
   // instead of relying on the content type.
   final decoded = jsonDecode(utf8.decode(response.bodyBytes));
   if (decoded is! Map<String, dynamic>) {
-    throw MusicApiException('Unexpected response from the catalogue.');
+    throw MusicApiException('Неожиданный ответ каталога.');
   }
   if (decoded['error'] != null) {
-    throw MusicApiException('Catalogue rejected the request.');
+    throw MusicApiException('Каталог отклонил запрос.');
   }
   return decoded;
 }
@@ -195,12 +195,12 @@ class Mood {
 }
 
 const kMoods = <Mood>[
-  Mood('Late night', 'lofi chill beats', CupertinoIcons.moon_stars),
-  Mood('Adrenaline', 'workout electronic', CupertinoIcons.bolt_fill),
-  Mood('Golden hour', 'indie pop sunset', CupertinoIcons.sun_max),
-  Mood('Deep focus', 'ambient piano focus', CupertinoIcons.scope),
-  Mood('Throwback', '80s synth pop', CupertinoIcons.recordingtape),
-  Mood('Low end', 'bass house', CupertinoIcons.speaker_2_fill),
+  Mood('Поздний вечер', 'lofi chill beats', CupertinoIcons.moon_stars),
+  Mood('Адреналин', 'workout electronic', CupertinoIcons.bolt_fill),
+  Mood('Золотой час', 'indie pop sunset', CupertinoIcons.sun_max),
+  Mood('Фокус', 'ambient piano focus', CupertinoIcons.scope),
+  Mood('Ретро', '80s synth pop', CupertinoIcons.recordingtape),
+  Mood('Низы', 'bass house', CupertinoIcons.speaker_2_fill),
 ];
 
 /// Facade the UI talks to; owns which [MusicSource] is currently active.

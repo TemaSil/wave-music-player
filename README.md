@@ -2,10 +2,11 @@
 
 # 🌊 Wave
 
-**Музыкальный плеер на Flutter с компонентами iOS 26 Liquid Glass и живыми анимациями.**
+**Музыкальный плеер на Flutter, собранный по дизайну Apple Music на компонентах iOS 26 Liquid Glass.**
 
-Реальные каталоги (Apple/iTunes и Deezer), 30-секундные превью, палитра интерфейса,
-которая подстраивается под обложку трека.
+Реальные каталоги (Apple/iTunes и Deezer), 30-секундные превью, управление
+из шторки и с экрана блокировки — и опциональный режим «живых цветов»,
+где весь интерфейс красится от обложки трека.
 
 [![CI](https://github.com/TemaSil/wave-music-player/actions/workflows/ci.yml/badge.svg)](https://github.com/TemaSil/wave-music-player/actions/workflows/ci.yml)
 [![Flutter](https://img.shields.io/badge/Flutter-3.47-02569B?logo=flutter&logoColor=white)](https://flutter.dev)
@@ -41,14 +42,14 @@
 
 <table>
 <tr>
-<td align="center"><img src="docs/screenshots/01-discover.png" width="200"><br><sub><b>Discover</b><br>чарты, настроения, живой фон</sub></td>
+<td align="center"><img src="docs/screenshots/01-discover.png" width="200"><br><sub><b>Слушать</b><br>чарты и подборки</sub></td>
 <td align="center"><img src="docs/screenshots/03-now-playing.png" width="200"><br><sub><b>Now Playing</b><br>винил, визуализатор, liquid-перемотка</sub></td>
 <td align="center"><img src="docs/screenshots/04-queue-sheet.png" width="200"><br><sub><b>Очередь</b><br><code>GlassModalSheet</code></sub></td>
 </tr>
 <tr>
-<td align="center"><img src="docs/screenshots/02-mini-player.png" width="200"><br><sub><b>Мини-плеер</b><br>аксессуар таб-бара, как в iOS 26</sub></td>
-<td align="center"><img src="docs/screenshots/06-search-results.png" width="200"><br><sub><b>Поиск</b><br>живой поиск по каталогу</sub></td>
-<td align="center"><img src="docs/screenshots/07-library.png" width="200"><br><sub><b>Библиотека</b><br>лайки, сохранённые локально</sub></td>
+<td align="center"><img src="docs/screenshots/02-mini-player.png" width="200"><br><sub><b>Мини-плеер</b><br><code>tabViewBottomAccessory</code></sub></td>
+<td align="center"><img src="docs/screenshots/05-collapsed-bar.png" width="200"><br><sub><b>Сжатый бар</b><br>пилюля уезжает внутрь при скролле</sub></td>
+<td align="center"><img src="docs/screenshots/06-settings.png" width="200"><br><sub><b>Настройки</b><br>переключение оформления</sub></td>
 </tr>
 </table>
 
@@ -59,9 +60,21 @@
 
 ## ✨ Что внутри
 
+### Оформление — два режима
+| | |
+|---|---|
+| **Apple Music** (по умолчанию) | Чистый чёрный фон, красный акцент `#FF2D55`, стекло только на навигации — значения взяты из эталонного `apple_music_demo.dart`, который идёт с библиотекой |
+| **Живые цвета** | Дрейфующее цветовое поле и акценты, вытянутые из обложки текущего трека |
+
+Переключается в настройках (иконка справа от заголовка), выбор сохраняется.
+Экран Now Playing красится от обложки в обоих режимах — как в настоящем Apple Music.
+
 ### Плеер
 - Очередь, перемотка, следующий/предыдущий, шаффл, повтор (выкл → всё → один).
-- Мини-плеер живёт в слоте `tabViewBottomAccessory` таб-бара — ровно там, где его держит iOS 26.
+- **Управление из шторки и с экрана блокировки**, воспроизведение в фоне,
+  кнопки на гарнитуре — через `just_audio_background`.
+- Мини-плеер живёт в слоте `tabViewBottomAccessory` таб-бара. При скролле бар
+  сжимается, и пилюля переезжает внутрь него — ровно как `.inline` в iOS 26.
 - Свайп вверх по мини-плееру или тап — раскрывается полноэкранный Now Playing;
   свайп вниз по нему — закрывается.
 - Лайки сохраняются локально (`shared_preferences`), переживают перезапуск.
@@ -90,7 +103,8 @@
 
 | Анимация | Где | Как сделано |
 |---|---|---|
-| **Aurora** — дышащий цветной фон | везде | 4 радиальных пятна по несоизмеримым синусоидам, аддитивное смешивание; амплитуда и скорость растут, когда играет музыка — `lib/ui/widgets/aurora_background.dart` |
+| **Aurora** — дышащий цветной фон | режим «живые цвета» | 4 радиальных пятна по несоизмеримым синусоидам, аддитивное смешивание; амплитуда и скорость растут, когда играет музыка; движение отключается в настройках — `lib/ui/widgets/aurora_background.dart` |
+| **Сжатие таб-бара** | оболочка | `GlassTabBar.searchable` с `isSearchActive`: бар пружинно схлопывается в три капсулы при скролле и раскрывается обратно |
 | **Винил** | Now Playing | пластинка выезжает из-за обложки и раскручивается; угол интегрируется вручную на `Ticker`, чтобы скорость плавно гасла при паузе с любого места оборота — `vinyl_artwork.dart` |
 | **Визуализатор** | Now Playing | 44 полосы из трёх слоёв синусоид + огибающая по краям; на паузе амплитуда плавно уходит в ноль — `wave_visualizer.dart` |
 | **Liquid-перемотка** | Now Playing | при захвате дорожка распухает, бегунок надувается в светящуюся каплю, под заливкой зажигается blur-свечение — `liquid_seek_bar.dart` |
@@ -106,9 +120,16 @@
 
 Из [`liquid_glass_widgets`](https://pub.dev/packages/liquid_glass_widgets) используются:
 `GlassScaffold`, `GlassTabBar.bottom` (с `bottomAccessory`), `GlassContainer`, `GlassCard`,
-`GlassButton`, `GlassIconButton`, `GlassChip`, `GlassSearchBar`, `GlassSegmentedControl`,
+`GlassButton`, `GlassIconButton`, `GlassChip`, `GlassSwitch`, `GlassSegmentedControl`,
 `GlassListTile`, `GlassModalSheet`, `GlassProgressIndicator`, `LiquidGlassSettings`,
-`LiquidRoundedSuperellipse`.
+`LiquidRoundedSuperellipse`, `LiquidRoundedRectangle`,
+`GlassTabBarAccessoryPlacementScope`.
+
+Ключевые вещи, без которых «почти iOS 26» не превращается в iOS 26:
+`brightnessResolver` (без него в тёмной теме пропадают канты и тени),
+`blur: 2` при `thickness: 30` и `fresnelStrength: 0` (сильное размытие делает
+стекло мутным, а не стеклянным), стекло только на навигации, и SF Pro —
+на Android и вебе подменяется на Inter, иначе весь интерфейс уезжает в Roboto.
 
 Стекло настраивается на уровне приложения через `GlassThemeData.simple(...)` и точечно
 через `LiquidGlassSettings` — например, мини-плеер подкрашивается цветом текущей обложки.
@@ -121,7 +142,8 @@
 lib/
 ├── main.dart                    точка входа: инициализация стекла, аудиосессии, темы
 ├── core/
-│   ├── wave_theme.dart          цвета, палитра обложки, кривые, типографика
+│   ├── wave_theme.dart          цвета, палитра обложки, стекло Apple Music, типографика
+│   ├── appearance.dart          выбор оформления, сохраняется на устройстве
 │   └── wave_scope.dart          сервисы + AmbienceNotifier (палитра текущего трека)
 ├── data/
 │   ├── track.dart               модель трека, парсинг обеих схем API, JSON-сериализация
@@ -133,7 +155,7 @@ lib/
 │   └── player_service.dart      обёртка над just_audio: очередь, скраб, шаффл, повтор
 └── ui/
     ├── root_shell.dart          GlassScaffold + таб-бар + мини-плеер + свайп между вкладками
-    ├── screens/                 discover / search / library / now_playing
+    ├── screens/                 discover / search / library / now_playing / settings
     └── widgets/                 всё из таблицы анимаций выше
 ```
 
@@ -234,8 +256,10 @@ python3 tool/generate_demo_assets.py   # обложки и превью в asset
 - **Web и CORS.** `itunes.apple.com` и `api.deezer.com` не присылают
   `Access-Control-Allow-Origin`, поэтому из браузера к ним не достучаться. Веб-сборка
   работает на демо-каталоге; для «настоящего» веба понадобится свой прокси.
-- **Фоновое воспроизведение** не настроено: нет foreground-сервиса на Android и
-  аудио-категории для фона на iOS. Для 30-секундных превью это осознанный отказ.
+- **Стекло на вебе упрощённое.** Пакет использует полноценный Impeller-шейдер
+  только на iOS/macOS/Android; в браузере работает облегчённый 2D-вариант.
+  Скриншоты сняты с веб-сборки, так что на реальном iPhone преломление заметно
+  сильнее, чем на картинках.
 - **Ассеты демо** (~1.4 МБ) попадают и в обычный APK. Это цена того, что демо-режим
   включается одним флагом, без отдельного флейвора сборки.
 

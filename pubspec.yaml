@@ -34,12 +34,13 @@ dependencies:
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
-  liquid_glass_widgets: ^1.4.3
+  liquid_glass_widgets: ^1.4.4
   just_audio: ^0.10.6
   audio_session: ^0.2.4
   http: ^1.6.0
   shared_preferences: ^2.5.5
   cached_network_image: ^4.0.0
+  just_audio_background: ^0.0.1-beta.17
 
 dev_dependencies:
   flutter_test:
@@ -67,6 +68,16 @@ flutter:
     # Offline demo catalogue — see lib/data/demo_source.dart. Only reachable
     # with --dart-define=WAVE_DEMO=true.
     - assets/demo/
+
+  fonts:
+    # Apple platforms resolve Cupertino's system family to SF Pro itself. Off
+    # Apple that family does not exist, and without a fallback the whole app
+    # renders in Roboto — which reads as Material, not iOS. Inter is the
+    # closest freely redistributable match. Registered as a fallback only, so
+    # iOS and macOS keep the real system font.
+    - family: Inter
+      fonts:
+        - asset: assets/fonts/InterVariable.ttf
 
   # To add assets to your application, add an assets section, like this:
   # assets:

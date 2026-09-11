@@ -92,7 +92,7 @@ class _ErrorState extends StatelessWidget {
             GlassButton(
               icon: const Icon(CupertinoIcons.arrow_clockwise),
               onTap: onRetry,
-              label: 'Retry',
+              label: 'Ещё раз',
               width: 52,
               height: 40,
               iconSize: 18,

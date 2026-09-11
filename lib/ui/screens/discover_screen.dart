@@ -13,9 +13,16 @@ import '../widgets/track_tile.dart';
 
 /// Charts + mood browsing, the app's landing tab.
 class DiscoverScreen extends StatefulWidget {
-  const DiscoverScreen({super.key, required this.scrollController});
+  const DiscoverScreen({
+    super.key,
+    required this.scrollController,
+    required this.contentPadding,
+  });
 
   final ScrollController scrollController;
+
+  /// Space the floating tab bar and play pill need at the bottom of the list.
+  final double contentPadding;
 
   @override
   State<DiscoverScreen> createState() => _DiscoverScreenState();
@@ -59,7 +66,7 @@ class _DiscoverScreenState extends State<DiscoverScreen>
       }
     } catch (_) {
       if (mounted && token == _chartsToken) {
-        setState(() => _charts = const Failure('Could not load the charts.'));
+        setState(() => _charts = const Failure('Не удалось загрузить чарты.'));
       }
     }
   }
@@ -110,7 +117,9 @@ class _DiscoverScreenState extends State<DiscoverScreen>
                 await Future.wait([_loadCharts(), _loadMood(_mood)]);
               },
             ),
-            SliverToBoxAdapter(child: _Greeting(palette: palette)),
+            SliverToBoxAdapter(
+              child: SizedBox(height: MediaQuery.paddingOf(context).top + 56),
+            ),
             SliverToBoxAdapter(
               child: LoadableView<List<Track>>(
                 state: _charts,
@@ -127,8 +136,8 @@ class _DiscoverScreenState extends State<DiscoverScreen>
             ),
             SliverToBoxAdapter(
               child: SectionHeader(
-                title: 'Moods',
-                subtitle: 'Pick a feeling, not a genre',
+                title: 'Настроения',
+                subtitle: 'Выбирайте состояние, а не жанр',
               ),
             ),
             SliverToBoxAdapter(
@@ -148,8 +157,8 @@ class _DiscoverScreenState extends State<DiscoverScreen>
             ),
             SliverToBoxAdapter(
               child: SectionHeader(
-                title: 'Top 25',
-                subtitle: 'Most played right now',
+                title: 'Топ 25',
+                subtitle: 'Что слушают прямо сейчас',
               ),
             ),
             _ChartsSliver(
@@ -158,45 +167,10 @@ class _DiscoverScreenState extends State<DiscoverScreen>
               palette: palette,
               onRetry: _loadCharts,
             ),
-            const SliverToBoxAdapter(child: SizedBox(height: 160)),
+            SliverToBoxAdapter(child: SizedBox(height: widget.contentPadding)),
           ],
         );
       },
-    );
-  }
-}
-
-class _Greeting extends StatelessWidget {
-  const _Greeting({required this.palette});
-
-  final WavePalette palette;
-
-  @override
-  Widget build(BuildContext context) {
-    final hour = DateTime.now().hour;
-    final greeting = switch (hour) {
-      >= 5 && < 12 => 'Good morning',
-      >= 12 && < 18 => 'Good afternoon',
-      >= 18 && < 23 => 'Good evening',
-      _ => 'Still awake',
-    };
-
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(22, 8, 22, 18),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(greeting.toUpperCase(), style: WaveText.tiny),
-          const SizedBox(height: 4),
-          // The word "Wave" picks up the current artwork's colours.
-          ShaderMask(
-            shaderCallback: (rect) => LinearGradient(
-              colors: [palette.secondary, palette.primary, palette.tertiary],
-            ).createShader(rect),
-            child: const Text('Wave', style: WaveText.largeTitle),
-          ),
-        ],
-      ),
     );
   }
 }
@@ -250,8 +224,8 @@ class _MoodList extends StatelessWidget {
     if (tracks.isEmpty) {
       return const EmptyState(
         icon: CupertinoIcons.music_note_list,
-        title: 'Nothing here yet',
-        subtitle: 'Try another mood.',
+        title: 'Здесь пока пусто',
+        subtitle: 'Попробуйте другое настроение.',
       );
     }
     return Padding(

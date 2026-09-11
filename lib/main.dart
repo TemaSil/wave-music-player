@@ -1,4 +1,5 @@
 import 'package:flutter/cupertino.dart';
+import 'package:just_audio_background/just_audio_background.dart';
 import 'package:flutter/semantics.dart';
 import 'package:flutter/services.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
@@ -8,6 +9,7 @@ import 'core/wave_scope.dart';
 import 'core/wave_theme.dart';
 import 'data/music_api.dart';
 import 'ui/root_shell.dart';
+import 'ui/web_frame.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -15,6 +17,16 @@ Future<void> main() async {
   // Warms the liquid-glass shader pipeline so the first frame is not the one
   // that pays for compilation.
   await LiquidGlassWidgets.initialize();
+
+  // Puts the transport controls in the notification shade and on the lock
+  // screen, and keeps playback alive when the app goes to background. Must run
+  // before the first AudioPlayer is constructed.
+  await JustAudioBackground.init(
+    androidNotificationChannelId: 'com.wave.wave.playback',
+    androidNotificationChannelName: 'Воспроизведение',
+    androidNotificationOngoing: true,
+    androidStopForegroundOnPause: true,
+  );
   await PlayerService.configureSession();
 
   SystemChrome.setSystemUIOverlayStyle(SystemUiOverlayStyle.light);
@@ -26,7 +38,10 @@ Future<void> main() async {
 
   runApp(
     LiquidGlassWidgets.wrap(
-      adaptiveQuality: true,
+      // Without this the package cannot see that the app is in dark mode, and
+      // its own docs warn that glass borders and shadows then drop out — which
+      // is what made the chrome read as flat grey instead of glass.
+      brightnessResolver: CupertinoTheme.maybeBrightnessOf,
       theme: GlassThemeData.simple(
         blur: 12,
         thickness: 24,
@@ -52,6 +67,7 @@ class _WaveAppState extends State<WaveApp> {
   void initState() {
     super.initState();
     _services.favorites.load();
+    _services.appearance.load();
   }
 
   @override
@@ -64,19 +80,23 @@ class _WaveAppState extends State<WaveApp> {
   Widget build(BuildContext context) {
     return WaveScope(
       services: _services,
-      child: const CupertinoApp(
+      child: CupertinoApp(
         title: 'Wave',
         debugShowCheckedModeBanner: false,
-        theme: CupertinoThemeData(
+        // A desktop browser window is not a phone; keep the layout honest.
+        builder: (context, child) => WebFrame(child: child!),
+        theme: const CupertinoThemeData(
           brightness: Brightness.dark,
           primaryColor: WaveColors.violet,
           scaffoldBackgroundColor: WaveColors.abyss,
           textTheme: CupertinoTextThemeData(
             primaryColor: WaveColors.textPrimary,
             textStyle: WaveText.body,
+            navTitleTextStyle: WaveText.section,
+            navLargeTitleTextStyle: WaveText.largeTitle,
           ),
         ),
-        home: RootShell(),
+        home: const RootShell(),
       ),
     );
   }

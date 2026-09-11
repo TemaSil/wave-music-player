@@ -6,11 +6,17 @@ import '../core/wave_theme.dart';
 import 'screens/discover_screen.dart';
 import 'screens/library_screen.dart';
 import 'screens/search_screen.dart';
+import 'screens/settings_sheet.dart';
 import 'widgets/aurora_background.dart';
 import 'widgets/mini_player.dart';
 
-/// The app frame: aurora background, swipeable tabs, and the glass tab bar
-/// carrying the mini player as its bottom accessory.
+/// The app frame, laid out the way Apple Music lays its own out.
+///
+/// The shape of this comes from the Apple Music reference demo that ships with
+/// `liquid_glass_widgets`: a fixed header that fades out over the first 30
+/// logical pixels of scroll, a searchable glass tab bar that spring-collapses
+/// once the content has scrolled past a threshold, and the play pill riding in
+/// the bar's `bottomAccessory` slot.
 class RootShell extends StatefulWidget {
   const RootShell({super.key});
 
@@ -19,50 +25,106 @@ class RootShell extends StatefulWidget {
 }
 
 class _RootShellState extends State<RootShell> {
+  /// Scroll offset past which the bar collapses. Apple Music uses a low
+  /// threshold so the bar reacts almost immediately.
+  static const _miniThreshold = 50.0;
+
+  static const _barHeight = 64.0;
+  static const _accessoryHeight = 50.0;
+  static const _paddingH = 20.0;
+  static const _paddingV = 16.0;
+  static const _spacing = 8.0;
+
   static const _tabs = [
-    GlassTab(icon: Icon(CupertinoIcons.waveform), label: 'Discover'),
-    GlassTab(icon: Icon(CupertinoIcons.search), label: 'Search'),
-    GlassTab(icon: Icon(CupertinoIcons.heart_fill), label: 'Library'),
+    GlassTab(
+      label: 'Главное',
+      icon: Icon(CupertinoIcons.house),
+      activeIcon: Icon(CupertinoIcons.house_fill),
+    ),
+    GlassTab(
+      label: 'Медиатека',
+      icon: Icon(CupertinoIcons.music_albums),
+      activeIcon: Icon(CupertinoIcons.music_albums_fill),
+    ),
   ];
 
-  final PageController _pages = PageController();
-
-  /// One controller per tab, so the tab bar can react to the scroll position
-  /// of whichever tab is actually on screen.
   final List<ScrollController> _scrollControllers = List.generate(
-    3,
+    2,
     (_) => ScrollController(),
   );
+  final FocusNode _searchFocus = FocusNode();
 
+  /// The search field lives in the tab bar, so the shell owns its text and
+  /// hands the query down to the results screen.
+  final TextEditingController _searchController = TextEditingController();
+
+  String _query = '';
   int _index = 0;
+  bool _mini = false;
+  bool _searching = false;
+  bool _searchFocused = false;
+
+  ScrollController get _activeScroll => _scrollControllers[_index];
+
+  @override
+  void initState() {
+    super.initState();
+    for (final controller in _scrollControllers) {
+      controller.addListener(_onScroll);
+    }
+    _searchFocus.addListener(
+      () => setState(() => _searchFocused = _searchFocus.hasFocus),
+    );
+  }
 
   @override
   void dispose() {
-    _pages.dispose();
     for (final controller in _scrollControllers) {
-      controller.dispose();
+      controller
+        ..removeListener(_onScroll)
+        ..dispose();
     }
+    _searchFocus.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
+  void _onScroll() {
+    final controller = _activeScroll;
+    final mini = controller.hasClients && controller.offset > _miniThreshold;
+    if (mini == _mini) return;
+    setState(() => _mini = mini);
+  }
+
+  /// Tapping the collapsed bar sends the active tab back to the top, which is
+  /// what expands the bar again.
+  void _expand() {
+    final controller = _activeScroll;
+    if (controller.hasClients) {
+      controller.animateTo(
+        0,
+        duration: const Duration(milliseconds: 400),
+        curve: Curves.easeOutQuart,
+      );
+    }
+    setState(() {
+      _mini = false;
+      _searching = false;
+      _searchFocused = false;
+    });
+  }
+
   void _selectTab(int index) {
-    if (index == _index) {
-      // Re-tapping the active tab scrolls it back to the top, like iOS.
-      final controller = _scrollControllers[index];
-      if (controller.hasClients) {
-        controller.animateTo(
-          0,
-          duration: WaveMotion.medium,
-          curve: WaveMotion.emphasized,
-        );
-      }
+    if (index == _index && _mini) {
+      _expand();
       return;
     }
-    _pages.animateToPage(
-      index,
-      duration: WaveMotion.medium,
-      curve: WaveMotion.emphasized,
-    );
+    final controller = _scrollControllers[index];
+    setState(() {
+      _index = index;
+      _searching = false;
+      _mini = controller.hasClients && controller.offset > _miniThreshold;
+    });
   }
 
   @override
@@ -70,30 +132,50 @@ class _RootShellState extends State<RootShell> {
     final services = WaveScope.of(context);
 
     return ListenableBuilder(
-      listenable: Listenable.merge([services.player, services.ambience]),
+      listenable: Listenable.merge([
+        services.player,
+        services.ambience,
+        services.appearance,
+      ]),
       builder: (context, _) {
         final player = services.player;
         final palette = services.ambience.value;
+        final live = services.appearance.usesLiveColour;
+        final accent = live ? palette.primary : WaveColors.musicRed;
+
+        // Bar + its padding + the accessory + spacing + clearance, so the last
+        // row of every list clears the floating chrome.
+        final contentPad =
+            _barHeight +
+            _paddingV * 2 +
+            _accessoryHeight +
+            _spacing +
+            8 +
+            MediaQuery.viewPaddingOf(context).bottom;
 
         return GlassScaffold(
-          backgroundColor: WaveColors.abyss,
+          backgroundColor: live ? WaveColors.abyss : WaveColors.appleBackground,
           statusBarStyle: GlassStatusBarStyle.light,
-          background: AuroraBackground(
-            palette: palette,
-            energy: player.isPlaying ? 1 : 0,
-          ),
-          bottomBar: GlassTabBar.bottom(
-            tabs: _tabs,
-            selectedIndex: _index,
-            onTabSelected: _selectTab,
-            scrollController: _scrollControllers[_index],
-            selectedIconColor: palette.primary,
-            selectedLabelColor: palette.primary,
-            indicatorColor: palette.primary.withValues(alpha: 0.30),
-            bottomAccessory: MiniPlayer(player: player, palette: palette),
-            bottomAccessoryEnabled: player.hasTrack,
-            bottomAccessoryHeight: MiniPlayer.height,
-          ),
+          settings: appleMusicGlass(alpha: 0.80),
+          background: live
+              ? AuroraBackground(
+                  palette: palette,
+                  energy: player.isPlaying ? 1 : 0,
+                  animate: services.appearance.ambientMotion,
+                )
+              : const ColoredBox(color: WaveColors.appleBackground),
+          topEdgeFade: true,
+          bottomEdgeFade: true,
+          topEdgeFadeExtent: 0,
+          bottomEdgeFadeExtent: 0,
+          resizeToAvoidBottomInset: false,
+
+          // The iOS large-title pattern: a real header that fades away as the
+          // content scrolls under it, rather than a title baked into the list.
+          header: _searching ? null : _Header(title: _title, accent: accent),
+          headerScrollController: _activeScroll,
+          headerFadeDistance: 30,
+
           bodyOverlays: [
             if (player.error != null)
               _ErrorBanner(
@@ -101,20 +183,163 @@ class _RootShellState extends State<RootShell> {
                 onDismiss: player.clearError,
               ),
           ],
-          body: SafeArea(
-            bottom: false,
-            child: PageView(
-              controller: _pages,
-              onPageChanged: (index) => setState(() => _index = index),
-              children: [
-                DiscoverScreen(scrollController: _scrollControllers[0]),
-                SearchScreen(scrollController: _scrollControllers[1]),
-                LibraryScreen(scrollController: _scrollControllers[2]),
-              ],
+
+          body: AnimatedSwitcher(
+            duration: WaveMotion.medium,
+            transitionBuilder: (child, animation) =>
+                FadeTransition(opacity: animation, child: child),
+            child: _searching
+                ? SearchScreen(
+                    key: const ValueKey('search'),
+                    query: _query,
+                    contentPadding: contentPad,
+                    onSuggestion: (value) {
+                      _searchController.text = value;
+                      setState(() => _query = value);
+                    },
+                  )
+                : switch (_index) {
+                    1 => LibraryScreen(
+                      key: const ValueKey('library'),
+                      scrollController: _scrollControllers[1],
+                      contentPadding: contentPad,
+                    ),
+                    _ => DiscoverScreen(
+                      key: const ValueKey('discover'),
+                      scrollController: _scrollControllers[0],
+                      contentPadding: contentPad,
+                    ),
+                  },
+          ),
+
+          bottomBar: GlassTabBar.searchable(
+            tabs: _tabs,
+            selectedIndex: _index,
+            onTabSelected: _selectTab,
+            // Collapsing on scroll and collapsing for search are the same
+            // animation in iOS 26; the bar takes one flag for both.
+            isSearchActive: _mini || _searching,
+            bottomAccessoryPlacement: (_mini && !_searching)
+                ? GlassTabBarAccessoryPlacement.inline
+                : GlassTabBarAccessoryPlacement.expanded,
+            bottomAccessory: MiniPlayer(
+              player: player,
+              palette: palette,
+              accent: accent,
+              onExpandBar: _expand,
+            ),
+            bottomAccessoryHeight: _accessoryHeight,
+            bottomAccessoryEnabled: player.hasTrack && !_searchFocused,
+            barHeight: _barHeight,
+            searchBarHeight: _accessoryHeight,
+            horizontalPadding: _paddingH,
+            verticalPadding: _paddingV,
+            spacing: _spacing,
+            iconSize: 28,
+            labelFontSize: 10,
+            iconLabelSpacing: 0,
+            quality: GlassQuality.premium,
+            settings: appleMusicGlass(alpha: 0.67),
+            selectedIconColor: accent,
+            selectedLabelColor: accent,
+            unselectedIconColor: WaveColors.textPrimary.withValues(alpha: 0.9),
+            indicatorColor: WaveColors.textPrimary.withValues(alpha: 0.20),
+            searchConfig: GlassSearchBarConfig(
+              controller: _searchController,
+              focusNode: _searchFocus,
+              onChanged: (value) => setState(() => _query = value),
+              onSubmitted: (value) => setState(() => _query = value),
+              autoFocusOnExpand: false,
+              showsCancelButton: true,
+              expandWhenActive: !_mini || _searching,
+              hintText: 'Исполнители, треки, альбомы',
+              onSearchToggle: (active) {
+                if (active) {
+                  setState(() => _searching = true);
+                } else {
+                  _searchController.clear();
+                  setState(() {
+                    _searching = false;
+                    _searchFocused = false;
+                    _query = '';
+                  });
+                  if (_mini) _expand();
+                }
+              },
+              onSearchFocusChanged: (focused) =>
+                  setState(() => _searchFocused = focused),
+              textInputAction: TextInputAction.search,
+              // While the bar is collapsed the search capsule shrinks to a
+              // single glyph; show the active tab's icon there, as iOS does.
+              collapsedLogoBuilder: (context) {
+                final tab = _tabs[_index];
+                final icon = tab.activeIcon ?? tab.icon;
+                if (icon is Icon) {
+                  return Center(
+                    child: Icon(
+                      icon.icon,
+                      size: 28,
+                      color: _mini && !_searching
+                          ? accent
+                          : WaveColors.textPrimary.withValues(alpha: 0.9),
+                    ),
+                  );
+                }
+                return icon ?? const SizedBox.shrink();
+              },
             ),
           ),
         );
       },
+    );
+  }
+
+  String get _title => switch (_index) {
+    1 => 'Медиатека',
+    _ => 'Слушать',
+  };
+}
+
+/// Large title plus the settings button, in Apple Music's proportions.
+class _Header extends StatelessWidget {
+  const _Header({required this.title, required this.accent});
+
+  final String title;
+  final Color accent;
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(20, 4, 16, 12),
+      child: Row(
+        children: [
+          Text(title, style: WaveText.largeTitle.copyWith(fontSize: 34)),
+          const Spacer(),
+          Semantics(
+            button: true,
+            label: 'Настройки',
+            excludeSemantics: true,
+            child: GestureDetector(
+              behavior: HitTestBehavior.opaque,
+              onTap: () => showSettingsSheet(context),
+              child: Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  color: accent.withValues(alpha: 0.22),
+                ),
+                alignment: Alignment.center,
+                child: Icon(
+                  CupertinoIcons.slider_horizontal_3,
+                  size: 19,
+                  color: accent,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -137,6 +362,7 @@ class _ErrorBanner extends StatelessWidget {
         child: GlassContainer(
           shape: const LiquidRoundedSuperellipse(borderRadius: 20),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          settings: appleMusicGlass(),
           child: Row(
             children: [
               const Icon(

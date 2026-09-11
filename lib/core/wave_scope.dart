@@ -4,6 +4,7 @@ import '../audio/player_service.dart';
 import '../data/favorites_repository.dart';
 import '../data/music_api.dart';
 import '../data/palette_service.dart';
+import 'appearance.dart';
 import 'wave_theme.dart';
 
 /// Tracks the palette of whatever is currently playing.
@@ -12,34 +13,61 @@ import 'wave_theme.dart';
 /// ambient surface: widgets listen to one notifier instead of each kicking off
 /// their own extraction.
 class AmbienceNotifier extends ValueNotifier<WavePalette> {
-  AmbienceNotifier(this._player, this._palettes) : super(WavePalette.fallback) {
+  AmbienceNotifier(this._player, this._palettes, this._appearance)
+    : super(WavePalette.appleMusic) {
     _player.addListener(_onPlayerChanged);
-    _onPlayerChanged();
+    _appearance.addListener(_onAppearanceChanged);
+    _onAppearanceChanged();
   }
 
   final PlayerService _player;
   final PaletteService _palettes;
+  final AppearanceController _appearance;
+
   String? _resolvedFor;
 
-  void _onPlayerChanged() {
+  WavePalette _artwork = WavePalette.fallback;
+
+  /// The current track's own colours, regardless of skin.
+  ///
+  /// Apple Music keeps its app chrome black but still tints Now Playing from
+  /// the artwork, so that screen reads this instead of [value].
+  WavePalette get artwork => _artwork;
+
+  void _publish() {
+    value = _appearance.usesLiveColour ? _artwork : WavePalette.appleMusic;
+  }
+
+  void _onAppearanceChanged() {
+    _publish();
+    // A skin change can arrive before any track has been analysed.
+    if (_appearance.usesLiveColour) _onPlayerChanged(force: true);
+  }
+
+  void _onPlayerChanged({bool force = false}) {
     final track = _player.current;
-    if (track == null || track.uid == _resolvedFor) return;
+    if (track == null) return;
+    if (!force && track.uid == _resolvedFor) return;
     _resolvedFor = track.uid;
 
     final cached = _palettes.cached(track);
     if (cached != null) {
-      value = cached;
+      _artwork = cached;
+      _publish();
       return;
     }
     _palettes.of(track).then((palette) {
       // Guard against a late result for a track we have already moved past.
-      if (_resolvedFor == track.uid) value = palette;
+      if (_resolvedFor != track.uid) return;
+      _artwork = palette;
+      _publish();
     });
   }
 
   @override
   void dispose() {
     _player.removeListener(_onPlayerChanged);
+    _appearance.removeListener(_onAppearanceChanged);
     super.dispose();
   }
 }
@@ -50,20 +78,23 @@ class WaveServices {
     : player = PlayerService(),
       music = MusicRepository(),
       favorites = FavoritesRepository(),
-      palettes = PaletteService() {
-    ambience = AmbienceNotifier(player, palettes);
+      palettes = PaletteService(),
+      appearance = AppearanceController() {
+    ambience = AmbienceNotifier(player, palettes, appearance);
   }
 
   final PlayerService player;
   final MusicRepository music;
   final FavoritesRepository favorites;
   final PaletteService palettes;
+  final AppearanceController appearance;
   late final AmbienceNotifier ambience;
 
   void dispose() {
     ambience.dispose();
     player.dispose();
     favorites.dispose();
+    appearance.dispose();
   }
 }
 

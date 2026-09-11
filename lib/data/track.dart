@@ -4,7 +4,7 @@ import 'package:flutter/foundation.dart';
 enum MusicSourceId {
   itunes('itunes', 'Apple / iTunes'),
   deezer('deezer', 'Deezer'),
-  demo('demo', 'Offline demo');
+  demo('demo', 'Офлайн-демо');
 
   const MusicSourceId(this.key, this.label);
 

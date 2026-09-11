@@ -13,6 +13,7 @@ class PlayPauseButton extends StatelessWidget {
     required this.accent,
     this.isBusy = false,
     this.size = 64,
+    this.quality,
   });
 
   final bool isPlaying;
@@ -20,6 +21,12 @@ class PlayPauseButton extends StatelessWidget {
   final VoidCallback onTap;
   final Color accent;
   final double size;
+
+  /// The package reserves [GlassQuality.premium] — the full Impeller shader
+  /// pipeline — for static, non-scrolling focal elements, and warns it can
+  /// misrender inside a scroll view. Now Playing passes it; anything living in
+  /// a list leaves this null and gets the standard path.
+  final GlassQuality? quality;
 
   @override
   Widget build(BuildContext context) {
@@ -34,6 +41,7 @@ class PlayPauseButton extends StatelessWidget {
             height: size,
             label: isPlaying ? 'Pause' : 'Play',
             glowColor: accent,
+            quality: quality,
             settings: LiquidGlassSettings(
               blur: 10,
               thickness: 26,
